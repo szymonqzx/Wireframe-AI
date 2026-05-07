@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Takon/Wireframe-AI/schemas/v1/provider_list_response.json",
+  "title": "ProviderListResponse",
+  "description": "List of available providers response",
+  "type": "object",
+  "properties": {
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "provider_id": { "type": "string" },
+          "provider_label": { "type": "string" },
+          "transport": { "type": "string", "enum": ["http", "stdio", "socket"] },
+          "availability": { "type": "string", "enum": ["ready", "degraded", "unavailable"] }
+        },
+        "required": ["provider_id", "provider_label", "transport", "availability"]
+      },
+      "description": "List of available providers"
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Echoed from ProviderListRequest"
+    }
+  },
+  "required": ["providers", "request_id"]
+}

@@ -1,0 +1,19 @@
+[package]
+name = "wireframe-provider-cohere"
+version = "0.1.0"
+edition = "2021"
+description = "Cohere provider for Wireframe-AI"
+
+[lib]
+name = "wireframe_provider_cohere"
+path = "src/lib.rs"
+
+[dependencies]
+wireframe-provider-core = { path = "../../modules/provider-core" }
+async-trait = { workspace = true }
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+reqwest = { workspace = true }

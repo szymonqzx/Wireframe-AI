@@ -1,0 +1,13 @@
+modules:
+  interface:
+    enabled: true
+    plugins:
+      input:
+        plugin_id: "input-cli"
+        config:
+          prompt: "wireframe> "
+
+      output:
+        plugin_id: "output-markdown"
+        config:
+          syntax_highlighting: true

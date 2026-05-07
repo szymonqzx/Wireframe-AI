@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wireframe-observability-core
+  namespace: wireframe-ai
+  labels:
+    app: wireframe-observability-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wireframe-observability-core
+  template:
+    metadata:
+      labels:
+        app: wireframe-observability-core
+    spec:
+      containers:
+        - name: observability-core
+          image: wireframe-ai-observability-core:latest
+          env:
+            - name: WIREFRAME_AI_NATS_URL
+              value: "nats://nats:4222"
+            - name: WIREFRAME_AI_OBSERVABILITY_DB
+              value: "/data/wireframe_ai_observability-core.db"
+            - name: RUST_LOG
+              value: "info"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: observability-core-data
+              mountPath: /data
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'wireframe-ai-observability-core' > /dev/null"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      volumes:
+        - name: observability-core-data
+          persistentVolumeClaim:
+            claimName: observability-core-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: observability-core-data
+  namespace: wireframe-ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

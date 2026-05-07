@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Takon/Wireframe-AI/schemas/v1/provider_metadata.json",
+  "title": "ProviderMetadata",
+  "description": "Provider metadata and capabilities response",
+  "type": "object",
+  "properties": {
+    "provider_id": {
+      "type": "string",
+      "description": "Provider identifier"
+    },
+    "provider_label": {
+      "type": "string",
+      "description": "Human-readable provider name"
+    },
+    "provider_version": {
+      "type": "string",
+      "description": "Provider implementation version"
+    },
+    "protocol_version": {
+      "type": "string",
+      "description": "Provider protocol version supported"
+    },
+    "transport": {
+      "type": "string",
+      "enum": ["http", "stdio", "socket"],
+      "description": "Transport type used by this provider"
+    },
+    "capabilities": {
+      "$ref": "#/$defs/ProviderCapabilities"
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Echoed from ProviderDescribe request"
+    }
+  },
+  "required": ["provider_id", "provider_label", "provider_version", "protocol_version", "transport", "capabilities", "request_id"],
+  "$defs": {
+    "ProviderCapabilities": {
+      "type": "object",
+      "properties": {
+        "core_methods": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Core provider methods (complete, describe, status, etc.)"
+        },
+        "optional_methods": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional provider methods"
+        },
+        "features": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Supported features (streaming, tools, images, etc.)"
+        },
+        "custom_methods": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CustomMethod" },
+          "description": "Provider-specific custom methods"
+        }
+      },
+      "required": ["core_methods", "optional_methods", "features", "custom_methods"]
+    },
+    "CustomMethod": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "stability": { "type": "string", "enum": ["stable", "beta", "experimental"] },
+        "description": { "type": "string" }
+      },
+      "required": ["name", "stability", "description"]
+    }
+  }
+}

@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wireframe-tenant-core
+  namespace: wireframe-ai
+  labels:
+    app: wireframe-tenant-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wireframe-tenant-core
+  template:
+    metadata:
+      labels:
+        app: wireframe-tenant-core
+    spec:
+      containers:
+        - name: tenant-core
+          image: wireframe-ai-tenant-core:latest
+          env:
+            - name: WIREFRAME_AI_NATS_URL
+              value: "nats://nats:4222"
+            - name: WIREFRAME_AI_TENANT_DB
+              value: "/data/wireframe_ai_tenant-core.db"
+            - name: RUST_LOG
+              value: "info"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: tenant-core-data
+              mountPath: /data
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'wireframe-ai-tenant-core' > /dev/null"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      volumes:
+        - name: tenant-core-data
+          persistentVolumeClaim:
+            claimName: tenant-core-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tenant-core-data
+  namespace: wireframe-ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

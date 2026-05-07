@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Takon/Wireframe-AI/schemas/v1/task_enriched.json",
+  "title": "TaskEnriched",
+  "description": "Payload for the 'task.enriched' topic. Emitted by the Context module after enriching a submitted task with memory and history.",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier from the original request"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Correlation ID echoed from the original Envelope"
+    },
+    "user_input": {
+      "type": "string",
+      "description": "Original user request text (preserved from TaskSubmitted)"
+    },
+    "context": {
+      "$ref": "#/$defs/ContextPackage",
+      "description": "Enriched context package with memory, history, file snippets"
+    },
+    "inferred_constraints": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Any constraints discovered or inferred from context"
+    },
+    "enriched_at": {
+      "type": "integer",
+      "description": "Unix timestamp when enrichment occurred"
+    }
+  },
+  "required": ["session_id", "correlation_id", "user_input", "context", "enriched_at"],
+  "$defs": {
+    "ContextPackage": {
+      "type": "object",
+      "properties": {
+        "memory_chunks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MemoryChunk" }
+        },
+        "session_history": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ChatMessage" }
+        },
+        "readonly_files": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/FileSnapshot" }
+        },
+        "safe_env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "working_dir": { "type": "string" },
+        "max_context_tokens": { "type": "integer" }
+      },
+      "required": ["memory_chunks", "session_history", "readonly_files", "safe_env", "working_dir", "max_context_tokens"]
+    },
+    "MemoryChunk": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "content": { "type": "string" },
+        "source": { "type": "string" },
+        "relevance_score": { "type": "number" }
+      },
+      "required": ["id", "content", "source", "relevance_score"]
+    },
+    "ChatMessage": {
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["user", "assistant", "system"] },
+        "content": { "type": "string" },
+        "timestamp": { "type": "integer" }
+      },
+      "required": ["role", "content", "timestamp"]
+    },
+    "FileSnapshot": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "content": { "type": "string" },
+        "size_bytes": { "type": "integer" },
+        "last_modified": { "type": "integer" }
+      },
+      "required": ["path", "content", "size_bytes", "last_modified"]
+    }
+  }
+}

@@ -1,0 +1,17 @@
+modules:
+  orchestrator:
+    enabled: true
+    plugins:
+      planner:
+        plugin_id: "planner-hierarchical"
+        config:
+          max_depth: 5
+
+      execution:
+        plugin_id: "execution-sequential"
+        config:
+          timeout_seconds: 600
+
+      synthesizer:
+        plugin_id: "synthesizer-merge"
+        config: {}

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wireframe-ai
+  labels:
+    app.kubernetes.io/name: wireframe-ai
+    app.kubernetes.io/part-of: wireframe-ai

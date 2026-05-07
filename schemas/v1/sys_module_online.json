@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ModuleIdentity",
+  "description": "Module identity and capability announcement published on sys.module.online",
+  "type": "object",
+  "properties": {
+    "module_id": {
+      "type": "string",
+      "description": "Unique identifier for this module (e.g., 'wireframe-ai-adapter-rust')"
+    },
+    "version": {
+      "type": "string",
+      "description": "Module version (e.g., '1.0.0')"
+    },
+    "subscribes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "NATS topics this module subscribes to"
+    },
+    "publishes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "NATS topics this module publishes to"
+    },
+    "selfdev_capable": {
+      "type": "boolean",
+      "description": "Whether this module supports selfdev mode (runtime code modification)",
+      "default": false
+    },
+    "source_root": {
+      "type": "string",
+      "description": "Path to the module's source code root (if selfdev_capable is true)"
+    },
+    "binary_path": {
+      "type": "string",
+      "description": "Path to the module's binary (if selfdev_capable is true)"
+    }
+  },
+  "required": ["module_id", "version", "subscribes", "publishes"]
+}

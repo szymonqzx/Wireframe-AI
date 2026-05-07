@@ -1,0 +1,16 @@
+[package]
+name = "planner-linear"
+version = "0.1.0"
+edition = "2021"
+description = "Linear N-copy task planner for orchestrator"
+
+[dependencies]
+agentic-sdk = { workspace = true }
+async-trait = "0.1"
+serde_json = { workspace = true }
+thiserror = "1.0"
+uuid = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

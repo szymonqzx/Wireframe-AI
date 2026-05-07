@@ -1,0 +1,24 @@
+modules:
+  sandbox:
+    enabled: true
+    plugins:
+      tools:
+        - plugin_id: "tool-shell"
+          config:
+            timeout_secs: 30
+        - plugin_id: "tool-file"
+          config:
+            max_file_size: 10485760  # 10MB
+
+      security:
+        plugin_id: "policy-whitelist"
+        config:
+          allow_network: false
+          filesystem_policy: "sandbox_writable"
+
+      resources:
+        plugin_id: "limits-unix"
+        config:
+          cpu_limit_secs: 300
+          memory_limit_mb: 1024
+          timeout_secs: 30

@@ -1,0 +1,23 @@
+[project]
+name = "agentic-sdk-py"
+version = "0.1.0"
+description = "Wireframe AI Python SDK — Envelope, Module base class, message types for building distributed agent modules"
+requires-python = ">=3.10"
+dependencies = [
+    "nats-py>=2.6.0",
+]
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["agentic_sdk"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]

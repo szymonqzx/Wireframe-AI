@@ -1,0 +1,21 @@
+[package]
+name = "wireframe-replay"
+version = "0.1.0"
+edition = "2021"
+description = "Message replay and simulation tool for Wireframe AI"
+
+[[bin]]
+name = "wireframe-replay"
+path = "src/main.rs"
+
+[dependencies]
+agentic-sdk = { workspace = true }
+async-nats = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true }
+anyhow = { workspace = true }

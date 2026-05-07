@@ -1,0 +1,11 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Wireframe-AI Overview",
+    "tags": ["wireframe-ai"],
+    "timezone": "utc",
+    "panels": [],
+    "schemaVersion": 36,
+    "version": 1
+  }
+}

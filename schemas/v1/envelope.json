@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Takon/Wireframe-AI/schemas/v1/envelope.json",
+  "title": "Wireframe AI Message Envelope",
+  "description": "Every event on the NATS bus carries this wrapper. Never change root fields.",
+  "type": "object",
+  "properties": {
+    "message_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this exact message (UUID v4)"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^session_[a-f0-9-]+$",
+      "description": "Session identifier — groups all messages in one conversation"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Correlation ID — links a chain of messages back to the original task. Root = original request UUID; children append '-N' suffixes."
+    },
+    "topic": {
+      "type": "string",
+      "pattern": "^[a-z]+\\.[a-z]+(\\.[a-z]+)?$",
+      "description": "Routing key / topic. Determines which modules receive this. Format: namespace.noun.verb"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Typed payload — schema depends on topic. See topic-specific schemas."
+    },
+    "schema_version": {
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 1,
+      "description": "Schema version marker. Increment on breaking envelope changes."
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Unix seconds when the sender created this message."
+    }
+  },
+  "required": ["message_id", "session_id", "correlation_id", "topic", "payload", "schema_version", "timestamp"],
+  "additionalProperties": false
+}

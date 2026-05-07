@@ -1,0 +1,25 @@
+[package]
+name = "wireframe-ai-interface"
+version = "0.1.0"
+edition = "2021"
+description = "Interface module — CLI frontend. Reads stdin, emits task.submitted, waits for task.complete"
+
+[features]
+schema-validation = []
+
+[dependencies]
+agentic-sdk = { workspace = true, features = ["schema-validation"] }
+wireframe-config = { path = "../../config" }
+tokio = { workspace = true, features = ["io-util", "io-std", "macros", "rt", "time", "signal"] }
+async-nats = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+clap = { workspace = true, features = ["derive"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+[[bin]]
+name = "wireframe-ai-interface"
+path = "src/main.rs"

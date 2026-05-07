@@ -1,0 +1,256 @@
+# Production Wireframe-AI System Configuration
+#
+# This is a production-ready configuration with optimized settings
+# for deployment in production environments.
+
+modules:
+  # Context Module - Production Configuration
+  context:
+    enabled: true
+    plugins:
+      storage:
+        plugin_id: "storage-sqlite"
+        config:
+          db_path: "/var/lib/wireframe/wireframe_ai.db"
+          pool_size: 20
+          timeout_secs: 30
+
+      memory:
+        plugin_id: "memory-fts5"
+        config:
+          db_path: "/var/lib/wireframe/wireframe_ai.db"
+          chunk_size: 512
+          max_results: 20
+          cache_size: 1000
+
+      enrichment_pipeline:
+        - plugin_id: "enrichment-env"
+          order: 1
+          config:
+            allowed_vars:
+              - HOME
+              - PATH
+              - USER
+              - PWD
+        - plugin_id: "enrichment-memory"
+          order: 2
+          config:
+            max_chunks: 10
+            min_relevance: 0.7
+            cache_ttl: 300
+
+  # Orchestrator Module - Production Configuration
+  orchestrator:
+    enabled: true
+    plugins:
+      planner:
+        plugin_id: "planner-hierarchical"
+        config:
+          max_depth: 5
+          branching_factor: 3
+          timeout_seconds: 30
+
+      execution:
+        plugin_id: "execution-sequential"
+        config:
+          timeout_seconds: 600
+          retry_attempts: 3
+          retry_delay_ms: 1000
+
+      synthesizer:
+        plugin_id: "synthesizer-merge"
+        config:
+          merge_strategy: "concatenate"
+          separator: "\n\n"
+
+  # Sandbox Module - Production Configuration
+  sandbox:
+    enabled: true
+    plugins:
+      tools:
+        - plugin_id: "tool-shell"
+          config:
+            timeout_secs: 30
+            allowed_commands:
+              - ls
+              - cat
+              - grep
+              - find
+              - head
+              - tail
+              - wc
+              - sort
+              - uniq
+              - diff
+            working_dir: "/var/lib/wireframe/sandbox"
+
+        - plugin_id: "tool-file"
+          config:
+            max_file_size: 10485760  # 10MB
+            allowed_paths:
+              - "/var/lib/wireframe/sandbox"
+              - "/var/lib/wireframe/workspace"
+            denied_extensions:
+              - .exe
+              - .sh
+              - .bat
+              - .cmd
+              - .scr
+
+        - plugin_id: "tool-http"
+          config:
+            timeout_seconds: 30
+            max_redirects: 5
+            user_agent: "Wireframe-AI/1.0"
+            allowed_methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+            allowed_domains:
+              - "api.openai.com"
+              - "api.anthropic.com"
+
+      security:
+        plugin_id: "policy-custom"
+        config:
+          allowed_domains:
+            - "api.openai.com"
+            - "api.anthropic.com"
+          block_network: false
+          command_blacklist:
+            - rm
+            - dd
+            - mkfs
+            - fdisk
+            - format
+          path_whitelist:
+            - "/var/lib/wireframe/sandbox"
+            - "/var/lib/wireframe/workspace"
+            - "/tmp/wireframe"
+
+      resources:
+        plugin_id: "limits-unix"
+        config:
+          cpu_limit_secs: 300
+          memory_limit_mb: 1024
+          timeout_secs: 30
+
+  # Interface Module - Production Configuration
+  interface:
+    enabled: true
+    plugins:
+      input:
+        plugin_id: "input-cli"
+        config:
+          prompt: "wireframe> "
+          history_file: "/var/lib/wireframe/history.txt"
+          max_history: 10000
+
+      output:
+        plugin_id: "output-markdown"
+          config:
+            syntax_highlighting: true
+            theme: "monokai"
+            max_output_size: 10485760  # 10MB
+
+      ui_components:
+        - plugin_id: "ui-progress"
+          config:
+            width: 50
+            style: "blocks"
+
+        - plugin_id: "ui-rich"
+          config:
+            enable_colors: true
+            enable_emoji: true
+            max_lines: 1000
+
+# NATS Message Bus - Production Configuration
+nats:
+  url: "nats://nats:4222"
+  queue_groups:
+    context: "context_group"
+    orchestrator: "orchestrator_group"
+    sandbox: "sandbox_group"
+    interface: "interface_group"
+  reconnect_interval: 5
+  max_reconnects: 10
+  connection_timeout: 10
+  max_payload_size: 10485760  # 10MB
+  ping_interval: 30
+
+# LLM Provider Configuration
+providers:
+  openai:
+    api_key: "${OPENAI_API_KEY}"
+    base_url: "https://api.openai.com/v1"
+    models:
+      - name: "gpt-4"
+        max_tokens: 8192
+        default: true
+      - name: "gpt-4o"
+        max_tokens: 128000
+      - name: "gpt-3.5-turbo"
+        max_tokens: 4096
+
+  anthropic:
+    api_key: "${ANTHROPIC_API_KEY}"
+    base_url: "https://api.anthropic.com"
+    models:
+      - name: "claude-3-opus"
+        max_tokens: 4096
+      - name: "claude-3-sonnet"
+        max_tokens: 4096
+
+# Logging Configuration - Production
+logging:
+  level: "info"  # Use "warn" or "error" in production
+  format: "json"
+  outputs:
+    - type: "stdout"
+    - type: "file"
+      path: "/var/log/wireframe/wireframe.log"
+      rotation: "daily"
+      max_size: 104857600  # 100MB
+      max_backups: 30
+
+# Metrics Configuration - Production
+metrics:
+  enabled: true
+  port: 9090
+  path: "/metrics"
+  
+# Observability Configuration - Production
+observability:
+  tracing:
+    enabled: true
+    sampling_rate: 0.01  # 1% sampling in production
+    exporter: "jaeger"
+    jaeger:
+      endpoint: "http://jaeger:14268/api/traces"
+
+# Security Configuration - Production
+security:
+  enable_audit_log: true
+  audit_log_path: "/var/log/wireframe/security_audit.log"
+  require_authentication: true
+  api_key_required: true
+  tls_enabled: true
+  tls_cert_path: "/etc/wireframe/certs/server.crt"
+  tls_key_path: "/etc/wireframe/certs/server.key"
+
+# Performance Configuration - Production
+performance:
+  max_concurrent_tasks: 20
+  task_timeout: 600
+  result_cache_ttl: 300
+  connection_pool_size: 20
+  connection_pool_timeout: 30
+
+# Development Configuration - Disabled in Production
+development:
+  debug_mode: false
+  verbose_logging: false
+  hot_reload: false

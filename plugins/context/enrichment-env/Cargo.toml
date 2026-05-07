@@ -1,0 +1,20 @@
+[package]
+name = "enrichment-env"
+version = "0.1.0"
+edition = "2021"
+description = "Environment variable enrichment strategy for context module"
+
+[lib]
+name = "enrichment_env"
+path = "src/lib.rs"
+crate-type = ["lib"]
+
+[dependencies]
+agentic-sdk = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

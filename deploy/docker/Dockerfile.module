@@ -1,0 +1,54 @@
+# Generic Dockerfile for Wireframe-AI modules
+# Build context should be repo root.
+# Usage:
+#   docker build -f deploy/docker/Dockerfile.module --build-arg CRATE_NAME=wireframe-ai-context --build-arg BINARY_NAME=wireframe-ai-context -t wireframe-ai-context .
+
+ARG RUST_VERSION=1.80
+FROM rust:${RUST_VERSION}-slim-bookworm AS builder
+
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+COPY Cargo.toml Cargo.lock ./
+COPY sdk/ ./sdk/
+COPY provider-core/ ./provider-core/
+COPY schemas/ ./schemas/
+COPY modules/ ./modules/
+COPY tools/ ./tools/
+COPY kernel/ ./kernel/
+COPY adapter/ ./adapter/
+COPY config/ ./config/
+COPY examples/ ./examples/
+COPY providers/ ./providers/
+COPY tests/ ./tests/
+
+# CRATE_NAME is the exact Cargo crate name (e.g. wireframe-ai-context).
+# If omitted, it defaults to MODULE for backward compatibility.
+ARG CRATE_NAME
+ARG MODULE
+RUN if [ -n "$CRATE_NAME" ]; then \
+        CRATE="$CRATE_NAME"; \
+    elif [ -n "$MODULE" ]; then \
+        CRATE="$MODULE"; \
+    else \
+        echo "Either CRATE_NAME or MODULE build arg is required" && exit 1; \
+    fi && \
+    cargo build --release -p "$CRATE"
+
+FROM debian:bookworm-slim AS runtime
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG BINARY_NAME
+ENV BINARY_NAME=${BINARY_NAME}
+
+COPY --from=builder /build/target/release/${BINARY_NAME} /usr/local/bin/module
+
+ENV WIREFRAME_AI_NATS_URL=nats://nats:4222
+ENV RUST_LOG=info
+
+ENTRYPOINT ["/usr/local/bin/module"]

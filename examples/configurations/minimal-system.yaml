@@ -1,0 +1,107 @@
+# Minimal Wireframe-AI System Configuration
+#
+# This is a minimal configuration for getting started with Wireframe-AI.
+# It uses the simplest plugins for each module and minimal configuration.
+
+modules:
+  # Context Module - Minimal Configuration
+  context:
+    enabled: true
+    plugins:
+      storage:
+        plugin_id: "storage-sqlite"
+        config:
+          db_path: "./wireframe_ai.db"
+
+      memory:
+        plugin_id: "memory-fts5"
+        config:
+          db_path: "./wireframe_ai.db"
+
+      enrichment_pipeline:
+        - plugin_id: "enrichment-env"
+          order: 1
+          config: {}
+
+  # Orchestrator Module - Minimal Configuration
+  orchestrator:
+    enabled: true
+    plugins:
+      planner:
+        plugin_id: "planner-linear"
+        config:
+          concurrency: 3
+
+      execution:
+        plugin_id: "execution-parallel"
+        config:
+          result_timeout_secs: 600
+
+      synthesizer:
+        plugin_id: "synthesizer-merge"
+        config: {}
+
+  # Sandbox Module - Minimal Configuration
+  sandbox:
+    enabled: true
+    plugins:
+      tools:
+        - plugin_id: "tool-shell"
+          config:
+            timeout_secs: 30
+
+      security:
+        plugin_id: "policy-whitelist"
+        config:
+          allow_network: false
+          filesystem_policy: "sandbox_writable"
+
+      resources:
+        plugin_id: "limits-unix"
+        config:
+          cpu_limit_secs: 300
+          memory_limit_mb: 1024
+          timeout_secs: 30
+
+  # Interface Module - Minimal Configuration
+  interface:
+    enabled: true
+    plugins:
+      input:
+        plugin_id: "input-cli"
+        config:
+          prompt: "wireframe> "
+
+      output:
+        plugin_id: "output-markdown"
+        config:
+          syntax_highlighting: true
+
+# NATS Message Bus - Minimal Configuration
+nats:
+  url: "nats://localhost:4222"
+  queue_groups:
+    context: "context_group"
+    orchestrator: "orchestrator_group"
+    sandbox: "sandbox_group"
+    interface: "interface_group"
+  reconnect_interval: 5
+  max_reconnects: 10
+
+# Logging - Minimal Configuration
+logging:
+  level: "info"
+  format: "json"
+  outputs:
+    - type: "stdout"
+
+# Security - Minimal Configuration
+security:
+  enable_audit_log: false
+  require_authentication: false
+  api_key_required: false
+
+# Performance - Minimal Configuration
+performance:
+  max_concurrent_tasks: 5
+  task_timeout: 600

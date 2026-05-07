@@ -1,0 +1,38 @@
+[package]
+name = "wireframe-adapter-rust"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "wireframe_adapter"
+path = "src/lib.rs"
+
+[[bin]]
+name = "wireframe-adapter"
+path = "src/main.rs"
+
+[dependencies]
+wireframe-provider-core = { path = "../../modules/provider-core" }
+wireframe-provider-openai = { path = "../../providers/openai" }
+wireframe-provider-anthropic = { path = "../../providers/anthropic" }
+wireframe-provider-google = { path = "../../providers/google" }
+wireframe-provider-cohere = { path = "../../providers/cohere" }
+wireframe-provider-ollama = { path = "../../providers/ollama" }
+agentic-sdk = { workspace = true }
+async-nats = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+bytes = { workspace = true }
+tiktoken-rs = "0.5"
+tokio-util = { version = "0.7", features = ["codec"] }
+toml = "0.8"
+dashmap = { workspace = true }
+rand = "0.8"

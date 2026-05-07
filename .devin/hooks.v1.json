@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "description": "Wireframe-AI hook configuration for Devin CLI",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .devin/hooks/session-start.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

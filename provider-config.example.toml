@@ -1,0 +1,100 @@
+# Wireframe-AI Provider Configuration Example
+#
+# This file demonstrates how to configure LLM providers for Wireframe-AI.
+# Place your configuration at:
+#   - ~/.wireframe-ai/providers.toml (user-level)
+#   - ./providers.toml (project-level)
+#   - Or set WIREFRAME_AI_PROVIDER_CONFIG environment variable
+#
+# Environment variables will be used as fallback if configuration file is not found.
+
+default_provider = "openai"
+fallback_chain = ["openai", "anthropic", "google", "cohere", "ollama"]
+
+# Routing strategy: "default_with_fallback", "round_robin", "lowest_cost", "highest_availability"
+routing_strategy = "default_with_fallback"
+
+[[providers]]
+name = "openai"
+provider_type = "openai"
+model = "gpt-4o"
+api_key = "${OPENAI_API_KEY}"  # Or set directly: "sk-..."
+base_url = null  # Optional: "https://api.openai.com/v1"
+enabled = true
+priority = 100
+max_tokens = null  # Optional: 4096
+temperature = null  # Optional: 0.7
+stream = true
+
+[[providers]]
+name = "anthropic"
+provider_type = "anthropic"
+model = "claude-3-5-sonnet-20241022"
+api_key = "${ANTHROPIC_API_KEY}"
+base_url = null  # Optional: "https://api.anthropic.com"
+enabled = true
+priority = 90
+max_tokens = null
+temperature = null
+stream = true
+
+[[providers]]
+name = "google"
+provider_type = "google"
+model = "gemini-1.5-pro"
+api_key = "${GOOGLE_API_KEY}"  # Or ${GEMINI_API_KEY}
+base_url = null  # Optional: "https://generativelanguage.googleapis.com/v1beta"
+enabled = true
+priority = 80
+max_tokens = null
+temperature = null
+stream = true
+
+[[providers]]
+name = "cohere"
+provider_type = "cohere"
+model = "command-r"
+api_key = "${COHERE_API_KEY}"
+base_url = null  # Optional: "https://api.cohere.com"
+enabled = true
+priority = 70
+max_tokens = null
+temperature = null
+stream = true
+
+[[providers]]
+name = "ollama"
+provider_type = "ollama"
+model = "llama3.2"
+api_key = null  # Not required for local Ollama
+base_url = null  # Optional: "http://localhost:11434/v1"
+enabled = true
+priority = 50
+max_tokens = null
+temperature = null
+stream = true
+
+# OpenAI-compatible providers (e.g., DeepSeek, OpenCode)
+[[providers]]
+name = "deepseek"
+provider_type = "openai"
+model = "deepseek-chat"
+api_key = "${DEEPSEEK_API_KEY}"
+base_url = "https://api.deepseek.com"
+enabled = true
+priority = 85
+max_tokens = null
+temperature = null
+stream = true
+
+[[providers]]
+name = "opencode-go"
+provider_type = "openai"
+model = "deepseek-v4-flash"
+api_key = "${OPENCODE_GO_API_KEY}"
+base_url = "https://opencode.ai/zen/go/v1"
+enabled = true
+priority = 75
+max_tokens = null
+temperature = null
+stream = true

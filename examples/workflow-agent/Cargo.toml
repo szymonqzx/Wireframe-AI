@@ -1,0 +1,20 @@
+[package]
+name = "workflow-agent"
+version = "0.1.0"
+edition = "2021"
+description = "Example workflow agent using Wireframe-AI"
+
+[[bin]]
+name = "workflow-agent"
+path = "src/main.rs"
+
+[dependencies]
+agentic-sdk = { workspace = true, features = ["macros"] }
+async-nats = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+futures = { workspace = true }

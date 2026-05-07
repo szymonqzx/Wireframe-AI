@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ModuleRebuildStatus",
+  "description": "Status update for module rebuild process",
+  "type": "object",
+  "properties": {
+    "module_name": {
+      "type": "string",
+      "description": "Name of the module being rebuilt"
+    },
+    "request_id": {
+      "type": "string",
+      "description": "Correlation ID for the rebuild request"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["started", "compiling", "testing", "completed", "failed", "rolled_back"],
+      "description": "Current status of the rebuild"
+    },
+    "progress": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Progress percentage (0-100)"
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable status message"
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if status is 'failed'"
+    },
+    "binary_path": {
+      "type": "string",
+      "description": "Path to the newly built binary (if completed)"
+    },
+    "build_time_ms": {
+      "type": "number",
+      "description": "Build time in milliseconds (if completed)"
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Unix timestamp of this status update"
+    }
+  },
+  "required": ["module_name", "request_id", "status", "timestamp"]
+}

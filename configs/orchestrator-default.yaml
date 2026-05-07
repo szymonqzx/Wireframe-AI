@@ -1,0 +1,19 @@
+# Default configuration for orchestrator module with plugins
+
+modules:
+  orchestrator:
+    enabled: true
+    plugins:
+      planner:
+        plugin_id: "planner-linear"
+        config:
+          concurrency: 3
+      
+      execution:
+        plugin_id: "execution-parallel"
+        config:
+          result_timeout_secs: 600
+      
+      synthesizer:
+        plugin_id: "synthesizer-merge"
+        config: {}

@@ -1,0 +1,16 @@
+[package]
+name = "tool-http"
+version = "0.1.0"
+edition = "2021"
+description = "HTTP tool for sandbox"
+
+[dependencies]
+agentic-sdk = { workspace = true }
+async-trait = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+reqwest = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

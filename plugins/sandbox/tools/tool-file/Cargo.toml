@@ -1,0 +1,16 @@
+[package]
+name = "tool-file"
+version = "0.1.0"
+edition = "2021"
+description = "File operations tool for sandbox (read, write, list)"
+
+[dependencies]
+agentic-sdk = { workspace = true }
+async-trait = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["fs", "io-util"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

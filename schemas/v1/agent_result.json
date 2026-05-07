@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Takon/Wireframe-AI/schemas/v1/agent_result.json",
+  "title": "Agent Result",
+  "description": "What an adapter sends back after finishing a job",
+  "type": "object",
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The job this completes"
+    },
+    "correlation_parent": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Root correlation ID (echoed from AgentJob.correlation_parent)"
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Final text result"
+        },
+        "structured": {
+          "description": "Structured output (JSON, if requested)"
+        },
+        "files_written": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Files written (relative to working_dir)"
+        },
+        "commands_run": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Commands executed"
+        }
+      },
+      "description": "What the adapter produced"
+    },
+    "tool_invocations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tool_name": {
+            "type": "string"
+          },
+          "parameters": {
+            "description": "Tool parameters"
+          },
+          "result": {
+            "description": "Tool result"
+          },
+          "duration_ms": {
+            "type": "integer"
+          }
+        },
+        "required": ["tool_name", "parameters", "result", "duration_ms"]
+      },
+      "description": "Tool calls made (if any)"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": ["code", "message", "retryable"]
+      },
+      "description": "Errors that occurred during execution (non-fatal)"
+    },
+    "usage": {
+      "type": "object",
+      "properties": {
+        "prompt_tokens": {
+          "type": "integer"
+        },
+        "completion_tokens": {
+          "type": "integer"
+        },
+        "total_tokens": {
+          "type": "integer"
+        },
+        "cost_cents": {
+          "type": "number"
+        }
+      },
+      "required": ["prompt_tokens", "completion_tokens", "total_tokens"],
+      "description": "Token usage / cost metrics"
+    },
+    "completed_at": {
+      "type": "integer",
+      "description": "Unix timestamp when completed"
+    }
+  },
+  "required": ["job_id", "correlation_parent", "output", "tool_invocations", "errors", "completed_at"],
+  "additionalProperties": false
+}

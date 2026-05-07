@@ -1,0 +1,25 @@
+[package]
+name = "wireframe-ai-orchestrator-core"
+version = "0.1.0"
+edition = "2021"
+description = "Orchestrator core orchestration — NATS communication and plugin management"
+
+[features]
+schema-validation = ["agentic-sdk/schema-validation"]
+
+[dependencies]
+agentic-sdk = { workspace = true, features = ["schema-validation", "macros"] }
+wireframe-config = { path = "../../config" }
+tokio = { workspace = true, features = ["sync", "macros", "rt-multi-thread", "signal", "time"] }
+async-nats = { workspace = true }
+futures = "0.3"
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde_yaml = "0.9"
+serde = { version = "1.0", features = ["derive"] }
+chrono = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+tokio-test = "0.4"

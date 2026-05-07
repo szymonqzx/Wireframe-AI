@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Takon/Wireframe-AI/schemas/v1/task_complete.json",
+  "title": "Task Complete",
+  "description": "Final result returned to Interface for display to user",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "pattern": "^session_[a-f0-9-]+$",
+      "description": "Session identifier for this conversation"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Correlation ID linking to original task"
+    },
+    "result": {
+      "type": "string",
+      "description": "The final answer / output text"
+    },
+    "side_effects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "Type of side effect (e.g., file_written, command_run)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the side effect"
+          },
+          "path": {
+            "type": "string",
+            "description": "File path if applicable"
+          }
+        },
+        "required": ["kind", "description"]
+      },
+      "description": "Optional side effects (files written, commands run)"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Any errors encountered (non-fatal)"
+    },
+    "completed_at": {
+      "type": "integer",
+      "description": "Unix timestamp when the task was completed"
+    }
+  },
+  "required": ["session_id", "correlation_id", "result", "side_effects", "warnings", "completed_at"],
+  "additionalProperties": false
+}

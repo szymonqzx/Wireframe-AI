@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Takon/Wireframe-AI/schemas/v1/agent_job.json",
+  "title": "AgentJob",
+  "description": "Self-contained unit of work dispatched to a Reasoning Adapter. Must carry everything the adapter needs — no external queries allowed.",
+  "type": "object",
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this job instance"
+    },
+    "correlation_parent": {
+      "type": "string",
+      "description": "Root correlation ID from the original user request. Adapter MUST echo this back in AgentResult.correlation_parent."
+    },
+    "task": { "$ref": "#/$defs/TaskDescription" },
+    "context": { "$ref": "#/$defs/ContextPackage" },
+    "available_tool_capabilities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ToolCapability" }
+    },
+    "constraints": { "$ref": "#/$defs/ExecutionConstraints" },
+    "model_config": { "$ref": "#/$defs/ModelConfig" },
+    "metadata": { "$ref": "#/$defs/JobMetadata" },
+    "schema_version": {
+      "type": "integer",
+      "default": 1
+    }
+  },
+  "required": ["job_id", "correlation_parent", "task", "context", "available_tool_capabilities", "constraints", "model_config", "metadata"],
+  "$defs": {
+    "TaskDescription": {
+      "type": "object",
+      "properties": {
+        "user_input": { "type": "string" },
+        "sub_task": { "$ref": "#/$defs/SubTask" },
+        "output_format": { "$ref": "#/$defs/OutputFormat" },
+        "user_constraints": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["user_input"]
+    },
+    "SubTask": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "expected_artifacts": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["title", "description"]
+    },
+    "OutputFormat": {
+      "type": "object",
+      "properties": {
+        "format": { "type": "string" },
+        "template": { "type": "string" }
+      },
+      "required": ["format"]
+    },
+    "ContextPackage": {
+      "type": "object",
+      "properties": {
+        "memory_chunks": { "type": "array", "items": { "$ref": "#/$defs/MemoryChunk" } },
+        "session_history": { "type": "array", "items": { "$ref": "#/$defs/ChatMessage" } },
+        "readonly_files": { "type": "array", "items": { "$ref": "#/$defs/FileSnapshot" } },
+        "safe_env": { "type": "object", "additionalProperties": { "type": "string" } },
+        "working_dir": { "type": "string" },
+        "max_context_tokens": { "type": "integer" }
+      },
+      "required": ["memory_chunks", "session_history", "readonly_files", "safe_env", "working_dir", "max_context_tokens"]
+    },
+    "MemoryChunk": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "content": { "type": "string" },
+        "source": { "type": "string" },
+        "relevance_score": { "type": "number" }
+      },
+      "required": ["id", "content", "source", "relevance_score"]
+    },
+    "ChatMessage": {
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["user", "assistant", "system"] },
+        "content": { "type": "string" },
+        "timestamp": { "type": "integer" }
+      },
+      "required": ["role", "content", "timestamp"]
+    },
+    "FileSnapshot": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "content": { "type": "string" },
+        "size_bytes": { "type": "integer" },
+        "last_modified": { "type": "integer" }
+      },
+      "required": ["path", "content", "size_bytes", "last_modified"]
+    },
+    "ToolCapability": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "input_schema": { "type": "object" },
+        "required_credentials": {
+          "type": "array", "items": { "$ref": "#/$defs/CredentialRef" }
+        },
+        "rate_limit": { "$ref": "#/$defs/RateLimit" }
+      },
+      "required": ["name", "description", "input_schema"]
+    },
+    "CredentialRef": {
+      "type": "object",
+      "properties": {
+        "credential_id": { "type": "string" },
+        "scope": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["credential_id", "scope"]
+    },
+    "RateLimit": {
+      "type": "object",
+      "properties": {
+        "requests_per_minute": { "type": "integer" },
+        "burst": { "type": "integer" }
+      },
+      "required": ["requests_per_minute", "burst"]
+    },
+    "ExecutionConstraints": {
+      "type": "object",
+      "properties": {
+        "timeout_seconds": { "type": "integer" },
+        "max_completion_tokens": { "type": "integer" },
+        "network_access": { "type": "string", "enum": ["None", "OutboundOnly", "Full"] },
+        "filesystem_policy": { "type": "string", "enum": ["Readonly", "SandboxWritable", "IsolatedVM"] },
+        "allow_subprocess": { "type": "boolean" },
+        "execution_mode": { "type": "string", "enum": ["sandbox", "direct", "hybrid"], "description": "Execution mode: sandbox (isolated), direct (host PC), hybrid (sandbox with selfdev elevation)" }
+      }
+    },
+    "ModelConfig": {
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string", "description": "Provider identifier (e.g., 'openai', 'anthropic', 'local')" },
+        "model_name": { "type": "string", "description": "Model name (e.g., 'gpt-4', 'claude-3-opus')" },
+        "temperature": { "type": "number", "description": "Sampling temperature (0.0-2.0)" },
+        "top_p": { "type": "number", "description": "Nucleus sampling parameter (0.0-1.0)" },
+        "max_tokens": { "type": "integer", "description": "Maximum tokens to generate" },
+        "extra": { "type": "object", "description": "Provider-specific parameters" }
+      },
+      "required": ["provider", "model_name"]
+    },
+    "JobMetadata": {
+      "type": "object",
+      "properties": {
+        "submitter": { "type": "string" },
+        "priority": { "type": "integer", "default": 1 },
+        "tags": { "type": "object", "additionalProperties": { "type": "string" } }
+      },
+      "required": ["submitter"]
+    }
+  }
+}

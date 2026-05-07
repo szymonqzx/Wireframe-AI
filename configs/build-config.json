@@ -1,0 +1,76 @@
+{
+  "nats": {
+    "version": "2.10.27",
+    "autoDownload": true,
+    "port": 4222
+  },
+  "build": {
+    "cacheEnabled": true,
+    "parallelBuilds": false,
+    "cacheDir": ".build-cache"
+  },
+  "test": {
+    "timeoutSeconds": 15,
+    "verbose": false
+  },
+  "modules": {
+    "context": {
+      "enabled": true,
+      "logLevel": "debug"
+    },
+    "orchestrator": {
+      "enabled": true,
+      "logLevel": "debug"
+    },
+    "sandbox": {
+      "enabled": true,
+      "logLevel": "debug"
+    },
+    "adapter": {
+      "enabled": true,
+      "logLevel": "debug"
+    }
+  },
+  "apiKeys": {
+    "openai": {
+      "envVar": "OPENAI_API_KEY",
+      "prompt": true
+    },
+    "anthropic": {
+      "envVar": "ANTHROPIC_API_KEY",
+      "prompt": true
+    },
+    "deepseek": {
+      "envVar": "DEEPSEEK_API_KEY",
+      "prompt": true
+    },
+    "opencode": {
+      "envVar": "OPENCODE_GO_API_KEY",
+      "prompt": true
+    }
+  },
+  "crossBuild": {
+    "targets": [
+      {
+        "name": "Linux x86_64",
+        "target": "x86_64-unknown-linux-gnu",
+        "enabled": true
+      },
+      {
+        "name": "Linux ARM64",
+        "target": "aarch64-unknown-linux-gnu",
+        "enabled": true
+      },
+      {
+        "name": "Windows x86_64",
+        "target": "x86_64-pc-windows-gnu",
+        "enabled": true
+      },
+      {
+        "name": "macOS ARM64",
+        "target": "aarch64-apple-darwin",
+        "enabled": true
+      }
+    ]
+  }
+}

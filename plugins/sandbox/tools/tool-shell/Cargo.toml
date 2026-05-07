@@ -1,0 +1,17 @@
+[package]
+name = "tool-shell"
+version = "0.1.0"
+edition = "2021"
+description = "Shell execution tool for sandbox"
+
+[dependencies]
+agentic-sdk = { workspace = true }
+async-trait = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["process", "time"] }
+shell-words = "1.1"
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

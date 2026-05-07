@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Takon/Wireframe-AI/schemas/v1/task_submitted.json",
+  "title": "Task Submitted",
+  "description": "User request as submitted by the Interface module",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "pattern": "^session_[a-f0-9-]+$",
+      "description": "Session identifier for this conversation"
+    },
+    "user_input": {
+      "type": "string",
+      "description": "The user's request or task description"
+    },
+    "submitted_at": {
+      "type": "integer",
+      "description": "Unix timestamp when the task was submitted"
+    }
+  },
+  "required": ["session_id", "user_input", "submitted_at"],
+  "additionalProperties": false
+}

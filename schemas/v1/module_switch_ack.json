@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ModuleSwitchAck",
+  "description": "Acknowledgment of module switch operation",
+  "type": "object",
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "description": "Unique identifier for the switch request"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Pending", "CompatibilityCheckFailed", "StoppingOldModule", "StartingNewModule", "Completed", "Failed", "RolledBack"],
+      "description": "Current status of the switch operation"
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable status message"
+    },
+    "old_pid": {
+      "type": "integer",
+      "description": "Process ID of the old module (if stopped)"
+    },
+    "new_pid": {
+      "type": "integer",
+      "description": "Process ID of the new module (if started)"
+    },
+    "compatibility_result": {
+      "type": "object",
+      "description": "Compatibility check result (if performed)"
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Unix timestamp of this acknowledgment"
+    }
+  },
+  "required": ["request_id", "status", "message", "timestamp"]
+}

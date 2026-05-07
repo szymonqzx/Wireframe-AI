@@ -1,0 +1,121 @@
+[workspace]
+resolver = "2"
+members = [
+    "adapter/rust",
+    "config",
+    "kernel/interface",
+    "modules/context-core",
+    "modules/event-sourcing-core",
+    "modules/integrations-core",
+    "modules/observability-core",
+    "modules/orchestrator-core",
+    "modules/provider-router-core",
+    "modules/sandbox-core",
+    "modules/tenant-core",
+    "modules/webhooks-core",
+    "plugins/context/storage-sqlite",
+    "plugins/context/memory-fts5",
+    "plugins/context/enrichment-env",
+    "plugins/orchestrator/planner-linear",
+    "plugins/orchestrator/planner-hierarchical",
+    "plugins/orchestrator/execution-parallel",
+    "plugins/orchestrator/execution-sequential",
+    "plugins/orchestrator/synthesizer-merge",
+    "plugins/sandbox/tools/tool-shell",
+    "plugins/sandbox/tools/tool-file",
+    "plugins/sandbox/tools/tool-http",
+    "plugins/sandbox/security/policy-whitelist",
+    "plugins/sandbox/security/policy-custom",
+    "plugins/sandbox/resources/limits-unix",
+    "modules/interface-core",
+    "plugins/interface/input-cli",
+    "plugins/interface/output-markdown",
+    "providers/anthropic",
+    "providers/cohere",
+    "providers/google",
+    "providers/ollama",
+    "providers/openai",
+    "sdk/agentic-sdk",
+    "sdk/agentic-sdk-macros",
+]
+
+[profile.release]
+# TEAM_022: Optimized release profile (jcode-inspired)
+opt-level = 1           # Faster compiles with good performance
+debug = 0
+codegen-units = 256    # Max parallelism for faster builds
+incremental = true
+lto = false            # Disable LTO for faster builds
+strip = false           # Keep symbols for debugging
+
+[profile.release-lto]
+# TEAM_022: Full LTO release for stable/distribution builds
+inherits = "release"
+lto = "thin"
+codegen-units = 16
+incremental = false
+strip = true
+panic = "abort"
+
+[profile.selfdev]
+# TEAM_022: Fast development profile (jcode-inspired)
+inherits = "release"
+opt-level = 0           # Fastest for development iteration
+
+[profile.dev]
+debug = 0
+opt-level = 0
+incremental = true
+codegen-units = 256
+
+[workspace.dependencies]
+# Shared dependencies across all crates
+# TEAM_022: Explicit features instead of full (jcode-inspired)
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "process", "signal", "net"] }
+async-nats = "0.35"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+uuid = { version = "1", features = ["v4", "serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "2"
+anyhow = "1"
+
+# Dev dependencies for testing
+futures = "0.3"
+async-trait = "0.1"
+tempfile = "3"
+dashmap = "6"
+
+# SDK workspace dependency
+agentic-sdk = { path = "sdk/agentic-sdk" }
+
+# MCP (Model Context Protocol) — for sandbox<->adapter tooling
+rmcp = { version = "0.1", features = ["server", "client"] }
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
+# Bytes for NATS
+bytes = "1"
+
+# Specific crates
+clap = { version = "4", features = ["derive"] }
+toml = "0.8"
+
+chrono = { version = "0.4", features = ["serde"] }
+
+# Database
+rusqlite = { version = "0.39", features = ["bundled"] }
+
+# Cryptographic dependencies
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+
+# System profiling
+sysinfo = "0.30"
+
+# HTTP server
+axum = "0.7"

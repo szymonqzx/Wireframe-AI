@@ -1,0 +1,21 @@
+[package]
+name = "execution-parallel"
+version = "0.1.0"
+edition = "2021"
+description = "Parallel execution strategy for orchestrator with NATS dispatch and collection"
+
+[features]
+schema-validation = ["agentic-sdk/schema-validation"]
+
+[dependencies]
+agentic-sdk = { workspace = true, features = ["schema-validation"] }
+async-nats = { workspace = true }
+async-trait = "0.1"
+serde_json = { workspace = true }
+thiserror = "1.0"
+tokio = { workspace = true, features = ["sync", "macros", "rt-multi-thread", "time"] }
+futures = "0.3"
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio-test = "0.4"

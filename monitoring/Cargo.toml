@@ -1,0 +1,19 @@
+[package]
+name = "wireframe-monitoring"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+prometheus = { version = "0.13", features = ["process"] }
+opentelemetry = { version = "0.21", features = ["trace"] }
+opentelemetry-stdout = { version = "0.2", features = ["trace"] }
+opentelemetry-jaeger = { version = "0.22", features = ["rt-tokio", "collector-client"], optional = true }
+opentelemetry-zipkin = { version = "0.21", features = ["reqwest-client"], optional = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tokio = { workspace = true }
+
+[features]
+jaeger = ["opentelemetry-jaeger"]
+zipkin = ["opentelemetry-zipkin"]

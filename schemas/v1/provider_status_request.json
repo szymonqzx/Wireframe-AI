@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Takon/Wireframe-AI/schemas/v1/provider_status_request.json",
+  "title": "ProviderStatusRequest",
+  "description": "Request provider availability status",
+  "type": "object",
+  "properties": {
+    "provider_id": {
+      "type": "string",
+      "description": "Provider identifier (e.g., 'openai', 'anthropic', 'local')"
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this request"
+    }
+  },
+  "required": ["provider_id", "request_id"]
+}

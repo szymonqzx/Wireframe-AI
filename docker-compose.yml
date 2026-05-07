@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: ["--http_port", "8222"]
+
+  context:
+    build:
+      context: .
+      dockerfile: modules/context/Dockerfile
+    depends_on:
+      - nats
+    environment:
+      - NATS_URL=nats://nats:4222
+    restart: unless-stopped
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: modules/orchestrator/Dockerfile
+    depends_on:
+      - nats
+    environment:
+      - NATS_URL=nats://nats:4222
+    restart: unless-stopped
+
+  sandbox:
+    build:
+      context: .
+      dockerfile: modules/sandbox/Dockerfile
+    depends_on:
+      - nats
+    environment:
+      - NATS_URL=nats://nats:4222
+    restart: unless-stopped

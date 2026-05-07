@@ -1,0 +1,11 @@
+[package]
+name = "tui-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+tui-config = { workspace = true }
+tui-nats = { workspace = true }

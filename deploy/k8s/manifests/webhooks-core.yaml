@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wireframe-webhooks-core
+  namespace: wireframe-ai
+  labels:
+    app: wireframe-webhooks-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wireframe-webhooks-core
+  template:
+    metadata:
+      labels:
+        app: wireframe-webhooks-core
+    spec:
+      containers:
+        - name: webhooks-core
+          image: wireframe-ai-webhooks-core:latest
+          env:
+            - name: WIREFRAME_AI_NATS_URL
+              value: "nats://nats:4222"
+            - name: RUST_LOG
+              value: "info"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'wireframe-ai-webhooks-core' > /dev/null"
+            initialDelaySeconds: 30
+            periodSeconds: 30

@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ModuleRestartAck",
+  "description": "Acknowledgment of module restart",
+  "type": "object",
+  "properties": {
+    "module_name": {
+      "type": "string",
+      "description": "Name of the module that restarted"
+    },
+    "request_id": {
+      "type": "string",
+      "description": "Correlation ID for the restart request"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["acknowledged", "rejected", "completed", "failed"],
+      "description": "Status of the restart acknowledgment"
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable message"
+    },
+    "new_pid": {
+      "type": "integer",
+      "description": "Process ID of the new instance (if completed)"
+    },
+    "old_pid": {
+      "type": "integer",
+      "description": "Process ID of the old instance (if known)"
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Unix timestamp of this acknowledgment"
+    }
+  },
+  "required": ["module_name", "request_id", "status", "timestamp"]
+}

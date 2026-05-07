@@ -1,0 +1,266 @@
+# Complete Wireframe-AI System Configuration
+#
+# This configuration enables all modules with recommended plugins
+# for a production-ready Wireframe-AI deployment.
+
+modules:
+  # Context Module Configuration
+  context:
+    enabled: true
+    plugins:
+      storage:
+        plugin_id: "storage-sqlite"
+        config:
+          db_path: "./wireframe_ai.db"
+          pool_size: 10
+
+      memory:
+        plugin_id: "memory-fts5"
+        config:
+          db_path: "./wireframe_ai.db"
+          chunk_size: 512
+          max_results: 10
+
+      enrichment_pipeline:
+        - plugin_id: "enrichment-env"
+          order: 1
+          config:
+            allowed_vars:
+              - HOME
+              - PATH
+              - USER
+              - PWD
+
+        - plugin_id: "enrichment-memory"
+          order: 2
+          config:
+            max_chunks: 5
+            min_relevance: 0.5
+
+        - plugin_id: "enrichment-file"
+          order: 3
+          config:
+            max_file_size: 10485760  # 10MB
+            allowed_extensions:
+              - .rs
+              - .py
+              - .js
+              - .ts
+              - .md
+              - .yaml
+              - .json
+              - .txt
+              - .toml
+
+  # Orchestrator Module Configuration
+  orchestrator:
+    enabled: true
+    plugins:
+      planner:
+        plugin_id: "planner-hierarchical"
+        config:
+          max_depth: 5
+          branching_factor: 3
+
+      execution:
+        plugin_id: "execution-sequential"
+        config:
+          timeout_seconds: 600
+          retry_attempts: 3
+
+      synthesizer:
+        plugin_id: "synthesizer-merge"
+        config:
+          merge_strategy: "concatenate"
+          separator: "\n\n"
+
+  # Sandbox Module Configuration
+  sandbox:
+    enabled: true
+    plugins:
+      tools:
+        - plugin_id: "tool-shell"
+          config:
+            timeout_secs: 30
+            allowed_commands:
+              - ls
+              - cat
+              - grep
+              - find
+              - head
+              - tail
+              - wc
+              - sort
+              - uniq
+              - diff
+            working_dir: "/tmp/wireframe"
+
+        - plugin_id: "tool-file"
+          config:
+            max_file_size: 10485760  # 10MB
+            allowed_paths:
+              - "/tmp/wireframe"
+              - "./"
+            denied_extensions:
+              - .exe
+              - .sh
+              - .bat
+              - .cmd
+              - .scr
+
+        - plugin_id: "tool-http"
+          config:
+            timeout_seconds: 30
+            max_redirects: 5
+            user_agent: "Wireframe-AI/1.0"
+            allowed_methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+
+        - plugin_id: "tool-git"
+          config:
+            timeout_seconds: 60
+            allowed_operations:
+              - clone
+              - pull
+              - status
+              - diff
+              - log
+              - branch
+              - checkout
+            max_repo_size: 104857600  # 100MB
+
+      security:
+        plugin_id: "policy-custom"
+        config:
+          allowed_domains:
+            - "api.openai.com"
+            - "api.anthropic.com"
+            - "cdn.example.com"
+          block_network: false
+          command_blacklist:
+            - rm
+            - dd
+            - mkfs
+            - fdisk
+            - format
+          path_whitelist:
+            - "/tmp/wireframe"
+            - "./"
+            - "../"
+
+      resources:
+        plugin_id: "limits-unix"
+        config:
+          cpu_limit_secs: 300
+          memory_limit_mb: 1024
+          timeout_secs: 30
+
+  # Interface Module Configuration
+  interface:
+    enabled: true
+    plugins:
+      input:
+        plugin_id: "input-cli"
+        config:
+          prompt: "wireframe> "
+          history_file: "./wireframe_history.txt"
+          max_history: 1000
+
+      output:
+        plugin_id: "output-markdown"
+        config:
+          syntax_highlighting: true
+          theme: "monokai"
+          max_output_size: 10485760  # 10MB
+
+      ui_components:
+        - plugin_id: "ui-progress"
+          config:
+            width: 50
+            style: "blocks"
+
+        - plugin_id: "ui-rich"
+          config:
+            enable_colors: true
+            enable_emoji: true
+            max_lines: 1000
+
+# NATS Message Bus Configuration
+nats:
+  url: "nats://localhost:4222"
+  queue_groups:
+    context: "context_group"
+    orchestrator: "orchestrator_group"
+    sandbox: "sandbox_group"
+    interface: "interface_group"
+  reconnect_interval: 5
+  max_reconnects: 10
+  connection_timeout: 10
+
+# LLM Provider Configuration
+providers:
+  openai:
+    api_key: "${OPENAI_API_KEY}"  # Use environment variable
+    base_url: "https://api.openai.com/v1"
+    models:
+      - name: "gpt-4"
+        max_tokens: 8192
+        default: true
+      - name: "gpt-3.5-turbo"
+        max_tokens: 4096
+
+  anthropic:
+    api_key: "${ANTHROPIC_API_KEY}"  # Use environment variable
+    base_url: "https://api.anthropic.com"
+    models:
+      - name: "claude-3-opus"
+        max_tokens: 4096
+      - name: "claude-3-sonnet"
+        max_tokens: 4096
+
+# Logging Configuration
+logging:
+  level: "info"
+  format: "json"
+  outputs:
+    - type: "stdout"
+    - type: "file"
+      path: "./wireframe.log"
+      rotation: "daily"
+      max_size: 104857600  # 100MB
+
+# Metrics Configuration
+metrics:
+  enabled: true
+  port: 9090
+  path: "/metrics"
+
+# Observability Configuration
+observability:
+  tracing:
+    enabled: true
+    sampling_rate: 0.1
+    exporter: "stdout"
+
+# Security Configuration
+security:
+  enable_audit_log: true
+  audit_log_path: "./security_audit.log"
+  require_authentication: false  # Set to true for production
+  api_key_required: false  # Set to true for production
+
+# Performance Configuration
+performance:
+  max_concurrent_tasks: 10
+  task_timeout: 600
+  result_cache_ttl: 300
+
+# Development Configuration (disable in production)
+development:
+  debug_mode: false
+  verbose_logging: false
+  hot_reload: false

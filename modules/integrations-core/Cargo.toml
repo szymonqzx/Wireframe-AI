@@ -1,0 +1,21 @@
+[package]
+name = "wireframe-ai-integrations-core"
+version = "0.1.0"
+edition = "2021"
+description = "External service integration hub for Wireframe AI (GitHub, Slack, databases)"
+
+[[bin]]
+name = "wireframe-ai-integrations-core"
+path = "src/main.rs"
+
+[dependencies]
+agentic-sdk = { workspace = true, features = ["macros"] }
+async-nats = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+reqwest = { workspace = true }
+futures = { workspace = true }

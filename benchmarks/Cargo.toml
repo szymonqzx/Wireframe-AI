@@ -1,0 +1,16 @@
+[package]
+name = "plugin_benchmarks"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+agentic-sdk = { workspace = true }
+tokio = { workspace = true }
+criterion = { workspace = true, features = ["async_tokio"] }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+
+[[bench]]
+name = "plugin_benchmarks"
+harness = false

@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wireframe-event-sourcing-core
+  namespace: wireframe-ai
+  labels:
+    app: wireframe-event-sourcing-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wireframe-event-sourcing-core
+  template:
+    metadata:
+      labels:
+        app: wireframe-event-sourcing-core
+    spec:
+      containers:
+        - name: event-sourcing-core
+          image: wireframe-ai-event-sourcing-core:latest
+          env:
+            - name: WIREFRAME_AI_NATS_URL
+              value: "nats://nats:4222"
+            - name: WIREFRAME_AI_EVENT_DB
+              value: "/data/wireframe_ai_events.db"
+            - name: RUST_LOG
+              value: "info"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: event-data
+              mountPath: /data
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'wireframe-ai-event-sourcing-core' > /dev/null"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      volumes:
+        - name: event-data
+          persistentVolumeClaim:
+            claimName: event-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: event-data
+  namespace: wireframe-ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

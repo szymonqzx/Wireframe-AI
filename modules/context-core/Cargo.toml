@@ -1,0 +1,25 @@
+[package]
+name = "wireframe-ai-context-core"
+version = "0.1.0"
+edition = "2021"
+description = "Context core orchestration — NATS communication and plugin management"
+
+[dependencies]
+agentic-sdk = { workspace = true, features = ["schema-validation", "macros"] }
+wireframe-config = { path = "../../config" }
+tokio = { workspace = true, features = ["sync", "macros", "rt-multi-thread", "signal"] }
+async-nats = { workspace = true }
+futures = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde_yaml = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+chrono = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[[bin]]
+name = "wireframe-ai-context-core"
+path = "src/main.rs"

@@ -1,0 +1,20 @@
+[project]
+name = "wireframe-ai-adapter"
+version = "0.1.0"
+description = "Reasoning adapter for Wireframe AI distributed agent harness — speaks MCP, processes AgentJob messages via NATS"
+requires-python = ">=3.10"
+dependencies = [
+    # agentic-sdk-py must be installed first (pip install -e sdk/agentic-sdk-py)
+    # The start-all.ps1 script handles this automatically.
+    "agentic-sdk-py",
+]
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[project.scripts]
+wireframe-ai-adapter-python = "adapter:main"

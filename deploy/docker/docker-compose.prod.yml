@@ -1,0 +1,182 @@
+version: "3.8"
+
+# Wireframe-AI Production Deployment
+# Multi-service orchestration with NATS, core modules, and monitoring.
+
+services:
+  nats:
+    image: nats:2.10
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: ["--js", "--m", "8222"]
+    volumes:
+      - nats-data:/data/jetstream
+    networks:
+      - wireframe
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  context:
+    build:
+      context: ../
+      dockerfile: modules/context/Dockerfile
+    environment:
+      - WIREFRAME_AI_NATS_URL=nats://nats:4222
+      - RUST_LOG=info
+    depends_on:
+      nats:
+        condition: service_healthy
+    networks:
+      - wireframe
+    restart: unless-stopped
+
+  orchestrator:
+    build:
+      context: ../
+      dockerfile: modules/orchestrator/Dockerfile
+    environment:
+      - WIREFRAME_AI_NATS_URL=nats://nats:4222
+      - RUST_LOG=info
+    depends_on:
+      nats:
+        condition: service_healthy
+      context:
+        condition: service_started
+    networks:
+      - wireframe
+    restart: unless-stopped
+
+  sandbox:
+    build:
+      context: ../
+      dockerfile: modules/sandbox/Dockerfile
+    environment:
+      - WIREFRAME_AI_NATS_URL=nats://nats:4222
+      - WIREFRAME_AI_EXECUTION_MODE=sandbox
+      - RUST_LOG=info
+    depends_on:
+      nats:
+        condition: service_healthy
+    networks:
+      - wireframe
+    restart: unless-stopped
+
+  provider-router-core:
+    build:
+      context: ../
+      dockerfile: modules/provider-router-core-core/Dockerfile
+    environment:
+      - WIREFRAME_AI_NATS_URL=nats://nats:4222
+      - RUST_LOG=info
+    depends_on:
+      nats:
+        condition: service_healthy
+    networks:
+      - wireframe
+    restart: unless-stopped
+
+  event-sourcing-core:
+    build:
+      context: ../
+      dockerfile: modules/event-sourcing-core-core/Dockerfile
+    environment:
+      - WIREFRAME_AI_NATS_URL=nats://nats:4222
+      - RUST_LOG=info
+    depends_on:
+      nats:
+        condition: service_healthy
+    networks:
+      - wireframe
+    restart: unless-stopped
+
+  observability-core:
+    build:
+      context: ../
+      dockerfile: modules/observability-core-core/Dockerfile
+    environment:
+      - WIREFRAME_AI_NATS_URL=nats://nats:4222
+      - RUST_LOG=info
+    depends_on:
+      nats:
+        condition: service_healthy
+    networks:
+      - wireframe
+    restart: unless-stopped
+
+  tenant-core:
+    build:
+      context: ../
+      dockerfile: modules/tenant-core-core/Dockerfile
+    environment:
+      - WIREFRAME_AI_NATS_URL=nats://nats:4222
+      - RUST_LOG=info
+    depends_on:
+      nats:
+        condition: service_healthy
+    networks:
+      - wireframe
+    restart: unless-stopped
+
+  webhooks-core:
+    build:
+      context: ../
+      dockerfile: modules/webhooks-core-core/Dockerfile
+    environment:
+      - WIREFRAME_AI_NATS_URL=nats://nats:4222
+      - RUST_LOG=info
+    ports:
+      - "8080:8080"
+    depends_on:
+      nats:
+        condition: service_healthy
+    networks:
+      - wireframe
+    restart: unless-stopped
+
+  integrations-core:
+    build:
+      context: ../
+      dockerfile: modules/integrations-core-core/Dockerfile
+    environment:
+      - WIREFRAME_AI_NATS_URL=nats://nats:4222
+      - RUST_LOG=info
+    depends_on:
+      nats:
+        condition: service_healthy
+    networks:
+      - wireframe
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.50
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - wireframe
+
+  grafana:
+    image: grafana/grafana:10.4
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - wireframe
+
+volumes:
+  nats-data:
+  grafana-data:
+
+networks:
+  wireframe:
+    driver: bridge

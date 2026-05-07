@@ -1,0 +1,17 @@
+[package]
+name = "input-cli"
+version = "0.1.0"
+edition = "2021"
+description = "CLI input method for interface"
+
+[dependencies]
+agentic-sdk = { workspace = true }
+async-trait = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

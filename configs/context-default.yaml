@@ -1,0 +1,16 @@
+modules:
+  context:
+    enabled: true
+    plugins:
+      storage:
+        plugin_id: "storage-sqlite"
+        config:
+          db_path: "./wireframe_ai.db"
+      memory:
+        plugin_id: "memory-fts5"
+        config:
+          db_path: "./wireframe_ai.db"
+      enrichment_pipeline:
+        - plugin_id: "enrichment-env"
+          order: 1
+          config: {}

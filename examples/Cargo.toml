@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+members = [
+    "cache-module",
+    "chatbot-app",
+    "echo-module",
+    "file-watcher-module",
+    "health-check-module",
+    "logger-module",
+    "metrics-module",
+    "ping-module",
+    "rate-limiter-module",
+    "router-module",
+    "validator-module",
+    "webhook-receiver",
+    "workflow-agent",
+]
+
+[workspace.dependencies]
+# Explicit dependencies for examples workspace
+agentic-sdk = { path = "../sdk/agentic-sdk" }
+agentic-sdk-macros = { path = "../sdk/agentic-sdk-macros" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "process", "signal", "net"] }
+async-nats = "0.35"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+uuid = { version = "1", features = ["v4", "serde"] }

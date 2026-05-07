@@ -1,0 +1,43 @@
+[workspace]
+resolver = "2"
+members = [
+    "tui-minimal/tui-core",
+    "tui-minimal/tui-input",
+    "tui-minimal/tui-render",
+    "tui-minimal/tui-nats",
+    "tui-minimal/tui-config",
+    "tui-minimal/tui-main",
+    "wireframe-cli",
+    "wireframe-debug",
+    "wireframe-replay",
+]
+
+[workspace.dependencies]
+# Explicit dependencies for tools workspace
+agentic-sdk = { path = "../sdk/agentic-sdk" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "process", "signal", "net"] }
+async-nats = "0.35"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+uuid = { version = "1", features = ["v4", "serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "2"
+anyhow = "1"
+futures = "0.3"
+clap = { version = "4", features = ["derive"] }
+toml = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+sysinfo = "0.30"
+regex = "1"
+syn = { version = "2", features = ["full", "parsing"] }
+ratatui = "0.28"
+crossterm = { version = "0.28", features = ["event-stream"] }
+
+# Internal TUI dependencies
+tui-config = { path = "tui-minimal/tui-config" }
+tui-nats = { path = "tui-minimal/tui-nats" }
+tui-input = { path = "tui-minimal/tui-input" }
+tui-render = { path = "tui-minimal/tui-render" }
+tui-core = { path = "tui-minimal/tui-core" }

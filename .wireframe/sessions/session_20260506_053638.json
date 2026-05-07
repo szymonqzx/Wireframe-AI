@@ -1,0 +1,64 @@
+{
+  "messages": [
+    {
+      "id": "8a596be4-2491-4097-9f2b-79892368e330",
+      "role": "System",
+      "content": "Provider configuration coming soon (OpenCode-style provider management)",
+      "timestamp": "2026-05-06T05:36:24.680459800Z",
+      "tools_used": []
+    },
+    {
+      "id": "4bc1606c-0963-4b78-a605-55ca9537be17",
+      "role": "System",
+      "content": "Selected provider: OpenCode Go",
+      "timestamp": "2026-05-06T05:36:36.165679700Z",
+      "tools_used": []
+    },
+    {
+      "id": "2457e0c0-227a-4760-93fa-70c20b94e988",
+      "role": "User",
+      "content": "Test",
+      "timestamp": "2026-05-06T05:36:38.129675300Z",
+      "tools_used": []
+    },
+    {
+      "id": "5483f5a6-8726-4cf9-8aa1-7e7dca89fd2c",
+      "role": "System",
+      "content": "Task submitted (correlation: 3d88c913-ea2d-4880-8482-6ecdee3929b7)",
+      "timestamp": "2026-05-06T05:36:38.129703700Z",
+      "tools_used": []
+    }
+  ],
+  "current_input": "",
+  "input_mode": "Editing",
+  "module_status_visible": false,
+  "logs_visible": false,
+  "nats_flow_visible": false,
+  "nats_inspector_visible": false,
+  "schema_validator_visible": false,
+  "provider_config_visible": false,
+  "fuzzy_search_visible": false,
+  "fuzzy_search_query": "",
+  "symbol_search_visible": false,
+  "symbol_search_query": "",
+  "session_id": "bf077243-5a36-4082-b8e2-02404b34dd88",
+  "session_path": null,
+  "last_saved": null,
+  "auto_save_enabled": true,
+  "is_multiline": false,
+  "current_model": "claude-sonnet-4-6",
+  "current_mode": "normal",
+  "active_modules_count": 0,
+  "custom_instructions": "\n\n=== Project Context (AGENTS.md) ===\n# AGENTS.md\n\n**Purpose:** Devin CLI orchestration for Wireframe-AI. Shared operating contract for Devin CLI and Windsurf.\n\n## Mission\n\nShip small, correct, reviewed changes. Prefer evidence over vibes.\n\n## Defaults\n\n- Read existing code before editing\n- Prefer minimal diffs over rewrites\n- Never invent APIs, commands, benchmarks, or pricing\n- Cite files and commands when reporting\n- Run the narrowest relevant check before declaring done\n\n## Defensive Prompting Examples\n\n### When adding a new module:\n\"Add a new module for X. Start by examining kernel/interface/src/main.rs for module registration patterns, then check schemas/v1/ for envelope contracts. Be careful to follow the topic naming convention (namespace.noun.verb).\"\n\n### When debugging NATS issues:\n\"Debug the NATS communication issue. Check kernel/interface/src/main.rs for NATS setup, then identify which module publishes the problematic message. You'll need to restart nats-server after any configuration changes.\"\n\n### When modifying schemas:\n\"Update the schema for X. First check schemas/v1/ for the current schema structure, then identify all modules that use this schema. Be careful to maintain backward compatibility or provide a migration path.\"\n\n### When adding tests:\n\"Add unit tests for the context module. Focus on the state management functions in modules/context/src/lib.rs. Mock the NATS connection and SQLite database. Test edge cases around concurrent state updates.\"\n\n### When performance optimization:\n\"Optimize the message flow in the orchestrator. Analyze modules/orchestrator/src/lib.rs for async patterns and serialization bottlenecks. Run cargo bench before and after changes to validate improvements.\"\n\n## Project Context\n\nWireframe-AI: Modular, event-driven agentic system (Rust core with Provider system) with NATS message bus and SDK-based architecture.\n\n**Key patterns:**\n- State ownership: Context module owns all persistent state\n- Message envelope: Never change root fields, only payload\n- Topic naming: `namespace.noun.verb` or `namespace.noun`, lowercase, dot-separated\n- Module identity: Publish to `sys.module.online` on startup, `sys.module.offline` on shutdown\n- Provider system: Unified Provider trait for LLM providers with capability negotiation\n\n**Essential commands:**\n```bash\ncargo build --release  # Build\ncargo test              # Test\ncargo clippy            # Lint\ncargo fmt               # Format\nnats-server && cargo run --bin kernel  # Run\ncargo run --release --bin wireframe-tui  # Run TUI\n```\n\n**TUI Provider Management:**\nThe TUI includes provider configuration management accessible via:\n- Keybinding: `P` to toggle provider management overlay\n- Slash commands: `/provider`, `/provider-add`, `/provider-edit <index>`, `/provider-remove <index>`\n- Provider config is loaded from `adapter/python/providers.json`\n- Changes are persisted immediately to the providers.json file\n\n## Quick Start\n\n**New to Wireframe-AI?** Start here:\n1. Read `docs/Project-Core.md` for system overview\n2. Read `docs/Project-Architecture.md` for architecture\n3. Read `docs/Provider-System.md` for provider system details\n4. Use `/project-routing` to find the right agent/skill for your task\n5. Use `/wireframe-workflow` before making any changes\n6. See `.devin/SKILLS.md` for complete skills index\n\n## Swarm Orchestration\n\nWireframe-AI leverages **swarm orchestration** for complex tasks - using multiple parallel subagents to achieve faster research and comprehensive analysis.\n\n**IMPORTANT RATE LIMIT:** Never spawn more than 1 subagent at once. Use sequential workers for comprehensive research.\n\n**When to use swarms:**\n- Adding new modules or features (1 worker at a time, sequential for comprehensive research)\n- Debugging complex issues (1 worker for investigation)\n- Performance optimization (1 worker for bottleneck analysis)\n- Security audits (1 worker at a time for comprehensive security review)\n- Schema migrations (1 worker for impact analysis)\n\n**Key swarm skill:** `/orchestration-patterns` - Auto-invokes for complex tasks, includes Wireframe-AI specific swarm examples with 1-worker pattern\n\n**Performance benefit:** Sequential workers provide systematic coverage while avoiding rate limits\n\n## Common Task → Skill Mapping\n\n| Task | Skill |\n|------|-------|\n| Implement a new feature | `/implementation` |\n| Fix a bug | `/systematic-debugging` |\n| Add or update feature | `/enhancement` |\n| Review code changes | `/review-pr` |\n| Run Rust tests | `/run-rust-tests` |\n| Build in release mode | `/build-release` |\n| Check Rust code quality | `/check-rust-quality` |\n| Architectural decision | `/architecture` |\n| Schema validation | `/wireframe-workflow` |\n| Quality checks | `/quality-checklist` |\n| Final verification | `/final-checks` |\n\n## Subagent Profiles\n\nUse these specialized subagents for targeted work:\n\n- **backend-specialist** (sonnet): Rust modules, Python adapters, NATS messaging, API design\n- **database-architect**: Database design, schema work, indexing\n- **fast-researcher** (swe): Fast read-only codebase mapping\n- **rust-researcher** (swe): Wireframe-AI Rust codebase research\n- **security-auditor** (opus): Security review and vulnerability assessment\n- **performance-optimizer**: Performance profiling and optimization\n- **schema-validator**: Schema contract validation\n- **test-runner**: Test execution and reporting\n\nInvoke with agent selection or let `/project-routing` choose automatically.\n\n## Skills\n\nUse skills for detailed procedures. Invoke with `/skill-name` or let the agent choose.\n\n**Core workflows:** `/wireframe-workflow`, `/quality-checklist`, `/orchestration-patterns`, `/project-routing`, `/final-checks`, `/memory-discipline`, `/project-commands`\n\n**Code quality:** `/review-pr`, `/check-rust-quality`, `/code-fix`\n\n**Testing & building:** `/run-rust-tests`, `/build-release`, `/run-tests`\n\n**Development:** `/implementation`, `/architecture`, `/systematic-debugging`, `/enhancement`\n\n**Language-specific:** `/rust-pro`, `/python-patterns`, `/async-tokio-patterns`\n\n**Workflow:** `/git-commit` (auto-invoked by agents)\n\n## Workflow Guidance\n\n**Starting a new feature:**\n1. Use `/project-routing` to identify the right approach\n2. Use `/orchestration-patterns` for swarm research (6-10 workers for comprehensive analysis)\n3. Use `/architecture` for design decisions\n4. Use `/implementation` for systematic development\n5. Use `/quality-checklist` before committing\n6. Use `/final-checks` before completion\n\n**Debugging an issue:**\n1. Use `/orchestration-patterns` for swarm investigation (4-6 workers for parallel debugging)\n2. Use `/systematic-debugging` for 4-phase methodology\n3. Use `/rust-pro` or `/python-patterns` for language-specific guidance\n4. Use `/run-tests` to verify fixes\n\n**Code review:**\n1. Use `/review-pr` for staged changes\n2. Use `/check-rust-quality` for linting\n3. Use `/quality-checklist` for comprehensive review\n\n**Performance optimization:**\n1. Use `/orchestration-patterns` for swarm analysis (5-8 workers for bottleneck identification)\n2. Use `/performance-profiling` for detailed profiling\n3. Use `/rust-pro` for optimization guidance\n4. Use `/run-tests` to validate improvements\n\n## Current Limitations\n\n### Limited Debugging Skills\nAI agents are not yet capable of deep debugging. For complex bugs:\n- Ask for probable root causes rather than end-to-end fixes\n- Use `/systematic-debugging` skill for 4-phase methodology\n- Human oversight required for final root cause determination\n- Once root cause is known, agents can implement the fix effectively\n\n### Visual Reasoning\nAgents have limited visual reasoning capabilities:\n- Use design systems with reusable components\n- Provide code from Figma rather than screenshots\n- Avoid pixel-perfect matching requirements\n- Describe visual requirements at the code level, not pixel level\n\n### Knowledge Cutoffs\nWhen working with new libraries or frameworks:\n- Always point agents to latest documentation\n- Don't assume agents know recent API changes\n- Provide explicit links to current docs\n- Verify patterns are current, not outdated\n\n### Complex Multi-System Issues\nFor issues spanning multiple systems:\n- Use swarm orchestration (4-6 workers) for parallel investigation\n- Set explicit checkpoints between phases\n- Expect multiple feedback cycles (80% time savings, not 100%)\n- Human verification remains essential for final quality\n\n## Time Management and Loss Minimization\n\nNot all agent interactions will result in success. Learn to maximize successful outcomes while minimizing wasted time and tokens.\n\n### Be Willing to Cut Losses Early\n\nA common mistake is committing to making an interaction successful, even when the agent's work is veering off track. If you find yourself thinking:\n- \"It's ignoring my instructions\"\n- \"This thing is going in circles\"\n\n**Stop and discontinue the conversation or manually take over.** Sending more messages is more likely a sign that the task complexity exceeds the agent's capabilities rather than a simple mistake that can be corrected.\n\n### Diversify Your Experiments\n\nIf you're new to working with agents:\n- Try a range of different prompts and ideas\n- Double down on tasks agents naturally perform well on\n- Cut losses on tasks they don't handle well\n- Don't force agents to find success every time\n\n### Start Fresh When Not Making Progress\n\nStarting over is often the right answer with agents (more than with humans). If an agent is struggling to address feedback or correct course:\n- Start fresh with a new agent\n- Provide all instructions up front\n- This often gets to success faster than trying to fix a messed-up environment\n\n**Key insight:** An agent's ability to correct a messed-up environment is much worse than its ability to generate fresh code from scratch.\n\n## Security and Permissioning\n\n### Create Accounts for Your Agent\n\n- Use throwaway emails for safe testing of sites\n- Create custom IAM roles for cloud resource access\n- Never use personal credentials for agent work\n\n### Use Development/Staging Environments\n\n- Agent should use the same testing setup as team engineers\n- Avoid giving access to production services entirely\n- For remote agents, run fully isolated test environments on the remote machine\n\n### Use Read-Only API Keys\n\n- Give readonly access where possible\n- Humans should manually run scripts that interact with outside services\n- Never give agents write access to critical production systems\n",
+  "agent_flow_mode": "Orchestrator",
+  "agent_timeout_secs": 300,
+  "modules": {},
+  "theme": "Default",
+  "left_panel_visible": false,
+  "right_panel_visible": false,
+  "screen_width": 211,
+  "screen_height": 52,
+  "keyboard_help_visible": false,
+  "tutorial_visible": false,
+  "tutorial_step": 0
+}

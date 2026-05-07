@@ -1,0 +1,25 @@
+[package]
+name = "wireframe-ai-webhooks-core"
+version = "0.1.0"
+edition = "2021"
+description = "Webhook receiver and dispatcher for Wireframe AI"
+
+[[bin]]
+name = "wireframe-ai-webhooks-core"
+path = "src/main.rs"
+
+[dependencies]
+agentic-sdk = { workspace = true, features = ["macros"] }
+wireframe-provider-core = { path = "../provider-core" }
+async-nats = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+futures = { workspace = true }
+hmac = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+axum = { workspace = true }

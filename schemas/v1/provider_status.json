@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Takon/Wireframe-AI/schemas/v1/provider_status.json",
+  "title": "ProviderStatus",
+  "description": "Provider availability status response",
+  "type": "object",
+  "properties": {
+    "provider_id": {
+      "type": "string",
+      "description": "Provider identifier"
+    },
+    "availability": {
+      "type": "string",
+      "enum": ["ready", "degraded", "unavailable"],
+      "description": "Current availability status"
+    },
+    "setup_state": {
+      "type": "string",
+      "enum": ["not_configured", "configured", "setup_required", "setup_in_progress"],
+      "description": "Configuration/setup state"
+    },
+    "requires_manual_setup": {
+      "type": "boolean",
+      "description": "Whether manual setup is required"
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Diagnostic" },
+      "description": "Diagnostic information"
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Echoed from ProviderStatusRequest"
+    }
+  },
+  "required": ["provider_id", "availability", "setup_state", "requires_manual_setup", "diagnostics", "request_id"],
+  "$defs": {
+    "Diagnostic": {
+      "type": "object",
+      "properties": {
+        "level": { "type": "string", "enum": ["info", "warning", "error"] },
+        "message": { "type": "string" },
+        "code": { "type": "string" }
+      },
+      "required": ["level", "message"]
+    }
+  }
+}

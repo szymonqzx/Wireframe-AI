@@ -1,0 +1,19 @@
+[package]
+name = "tui-main"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "tui-minimal"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+crossterm = { workspace = true }
+ratatui = { workspace = true }
+tokio = { workspace = true }
+tui-config = { workspace = true }
+tui-core = { workspace = true }
+tui-input = { workspace = true }
+tui-nats = { workspace = true }
+tui-render = { workspace = true }

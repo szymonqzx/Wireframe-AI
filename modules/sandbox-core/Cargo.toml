@@ -1,0 +1,23 @@
+[package]
+name = "wireframe-ai-sandbox-core"
+version = "0.1.0"
+edition = "2021"
+description = "Sandbox core orchestration — MCP server with plugin support"
+
+[features]
+schema-validation = ["agentic-sdk/schema-validation"]
+
+[dependencies]
+agentic-sdk = { workspace = true, features = ["schema-validation"] }
+wireframe-config = { path = "../../config" }
+tokio = { workspace = true, features = ["process", "io-util", "fs", "io-std", "macros", "rt-multi-thread", "signal"] }
+async-trait = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde_yaml = { workspace = true }
+serde = { workspace = true }
+schemars = "0.8"
+
+[dev-dependencies]
+tokio-test = "0.4"

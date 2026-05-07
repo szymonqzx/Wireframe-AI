@@ -1,0 +1,40 @@
+# Sandbox Plugin Configuration
+# This file configures the plugins loaded into the sandbox-core
+
+sandbox:
+  root: "/tmp/wireframe-sandbox"
+  
+  # Tool plugins (currently only built-in tools are supported)
+  tools:
+    - name: "builtin-file"
+      config:
+        max_file_size_mb: 10
+    - name: "builtin-shell"
+      config:
+        timeout_secs: 30
+  
+  # Security policy plugins
+  security:
+    - name: "whitelist"
+      config:
+        allowed_paths:
+          - "/tmp/wireframe-sandbox"
+        allowed_commands:
+          - "ls"
+          - "pwd"
+          - "echo"
+          - "cat"
+          - "grep"
+          - "find"
+          - "head"
+          - "tail"
+          - "wc"
+          - "sort"
+  
+  # Resource limiter plugins
+  resources:
+    - name: "unix"
+      config:
+        max_execution_time_secs: 60
+        max_memory_mb: 512
+        max_file_size_mb: 10

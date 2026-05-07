@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "devin": {
+    "org_id": "org-a8e2de6d8a904e82b1d04c4f1fdb4273"
+  },
+  "shell": {
+    "setup_complete": true
+  },
+  "agent": {
+    "model": "swe-1-6"
+  },
+  "permissions": {
+    "allow": [
+      "**"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "show_path": true,
+  "include_gitignored_files": true,
+  "skip_workspace_trust": true,
+  "read_config_from": {
+    "windsurf": false,
+    "cursor": false,
+    "claude": false,
+    "agents_standard": true,
+    "opencode": false,
+    "vscode": false,
+    "zed": false
+  },
+  "mcpServers": {
+    "fast-filesystem": {
+      "command": "npx",
+      "args": ["-y", "fast-filesystem-mcp"],
+      "env": {
+        "CREATE_BACKUP_FILES": "true"
+      }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "description": "Live documentation lookup — use with /docs command and documentation-lookup skill (resolve-library-id, query-docs)."
+    }
+  },
+  "notify": "smart",
+  "theme_auto_detect": "always"
+}

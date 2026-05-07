@@ -1,0 +1,27 @@
+modules:
+  sandbox:
+    enabled: true
+    plugins:
+      tools:
+        - plugin_id: "tool-shell"
+          config: {}
+        - plugin_id: "tool-file"
+          config: {}
+        - plugin_id: "tool-http"
+          config:
+            timeout_seconds: 30
+
+      security:
+        plugin_id: "policy-custom"
+        config:
+          allowed_domains:
+            - "api.example.com"
+            - "cdn.example.com"
+          block_network: false
+
+      resources:
+        plugin_id: "limits-unix"
+        config:
+          cpu_limit: 2
+          memory_limit: 1073741824
+          timeout: 300
