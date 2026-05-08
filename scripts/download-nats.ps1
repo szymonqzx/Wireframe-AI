@@ -77,7 +77,11 @@ try {
     # Download file with progress tracking
     try {
         $webClient = New-Object System.Net.WebClient
-        $webClient.DownloadFile($url, $outFile)
+        try {
+            $webClient.DownloadFile($url, $outFile)
+        } finally {
+            $webClient.Dispose()
+        }
         Write-Ok "Downloaded NATS server v${Version}"
     } catch {
         Write-Error "Failed to download: ${_}"
