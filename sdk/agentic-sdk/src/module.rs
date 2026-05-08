@@ -185,10 +185,8 @@ pub async fn publish_errors_batch(
     let timestamp = chrono::Utc::now().timestamp();
     let nc = nc.clone();
     
-    // Publish all errors concurrently using join! for better efficiency
-    let mut tasks = Vec::with_capacity(errors.len());
-    
-    for (module_id, error_code, error_message) in errors {
+    // Publish all errors concurrently using join_all for better efficiency
+    let futs = errors.into_iter().filter_map(|(module_id, error_code, error_message)| {
         let payload = serde_json::json!({
             "module_id": module_id,
             "error_code": error_code,
@@ -196,18 +194,15 @@ pub async fn publish_errors_batch(
             "ts": timestamp,
         });
         let env = Envelope::new("sys.module.error", payload, None);
-        if let Ok(data) = env.to_bytes() {
-            let nc_clone = nc.clone();
-            tasks.push(tokio::spawn(async move {
-                nc_clone.publish("sys.module.error", data.into()).await
-            }));
-        }
-    }
+        env.to_bytes().ok().map(|data| {
+            let nc = nc.clone();
+            async move {
+                let _ = nc.publish("sys.module.error", data.into()).await;
+            }
+        })
+    });
     
-    // Wait for all publishes to complete
-    for task in tasks {
-        let _ = task.await;
-    }
+    futures::future::join_all(futs).await;
     
     Ok(())
 }
@@ -224,18 +219,14 @@ pub async fn publish_envelopes_batch(
     }
     
     let nc = nc.clone();
-    let mut tasks = Vec::with_capacity(envelopes.len());
+    let futs = envelopes.into_iter().map(|(subject, data)| {
+        let nc = nc.clone();
+        async move {
+            let _ = nc.publish(subject, data.into()).await;
+        }
+    });
     
-    for (subject, data) in envelopes {
-        let nc_clone = nc.clone();
-        tasks.push(tokio::spawn(async move {
-            nc_clone.publish(subject, data.into()).await
-        }));
-    }
-    
-    for task in tasks {
-        let _ = task.await;
-    }
+    futures::future::join_all(futs).await;
     
     Ok(())
 }
@@ -293,18 +284,14 @@ impl MessageBuffer {
             let nc_clone = self.nc.clone();
             let pool_clone = self.buffer_pool.clone();
             tokio::spawn(async move {
-                let mut tasks = Vec::with_capacity(messages.len());
-                for (subject, data) in &messages {
+                let mut messages = messages;
+                let futs = messages.drain(..).map(|(subject, data)| {
                     let nc = nc_clone.clone();
-                    let subject = subject.clone();
-                    let data = data.clone();
-                    tasks.push(tokio::spawn(async move {
+                    async move {
                         let _ = nc.publish(subject, data.into()).await;
-                    }));
-                }
-                for task in tasks {
-                    let _ = task.await;
-                }
+                    }
+                });
+                futures::future::join_all(futs).await;
                 // Return the buffer to the pool for reuse
                 pool_clone.release(messages);
             });
@@ -343,18 +330,14 @@ impl MessageBuffer {
         let nc_clone = nc.clone();
         let pool_clone = pool.clone();
         tokio::spawn(async move {
-            let mut tasks = Vec::with_capacity(messages.len());
-            for (subject, data) in &messages {
+            let mut messages = messages;
+            let futs = messages.drain(..).map(|(subject, data)| {
                 let nc = nc_clone.clone();
-                let subject = subject.clone();
-                let data = data.clone();
-                tasks.push(tokio::spawn(async move {
+                async move {
                     let _ = nc.publish(subject, data.into()).await;
-                }));
-            }
-            for task in tasks {
-                let _ = task.await;
-            }
+                }
+            });
+            futures::future::join_all(futs).await;
             // Return the buffer to the pool for reuse
             pool_clone.release(messages);
         });
