@@ -74,7 +74,15 @@ try {
         exit 1
     }
 
-    Invoke-Download -Url $url -OutPath $outFile -Description "NATS server v${Version}"
+    # Download file with progress tracking
+    try {
+        $webClient = New-Object System.Net.WebClient
+        $webClient.DownloadFile($url, $outFile)
+        Write-Ok "Downloaded NATS server v${Version}"
+    } catch {
+        Write-Error "Failed to download: ${_}"
+        throw
+    }
 
     $downloadDuration = Stop-Timer -Timer $downloadTimer
     $durationStr = Format-Duration -Duration $downloadDuration

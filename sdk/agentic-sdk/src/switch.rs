@@ -123,6 +123,19 @@ impl ModuleSwitchCoordinator {
         info!("Stopping old module: {}", request.old_module);
         let old_pid = self.stop_module(&request.old_module).await?;
 
+        // Create NATS subscription BEFORE starting module to avoid race condition
+        let subscriber = if let Some(client) = &self.nats_client {
+            match client.subscribe("sys.module.online").await {
+                Ok(sub) => Some(sub),
+                Err(e) => {
+                    warn!("Failed to subscribe to sys.module.online: {}, will use fallback timeout", e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         // Start new module
         info!("Starting new module: {}", request.new_module);
         let new_pid = self
@@ -131,8 +144,13 @@ impl ModuleSwitchCoordinator {
 
         // Wait for new module to come online using NATS-based detection
         info!("Waiting for new module to come online via NATS");
-        if let Err(e) = self.wait_for_module_online(&request.new_module, &new_metadata).await {
-            warn!("Failed to detect module online via NATS: {}, using fallback timeout", e);
+        if let Some(sub) = subscriber {
+            if let Err(e) = self.wait_for_module_online_with_subscription(&request.new_module, sub).await {
+                warn!("Failed to detect module online via NATS: {}, using fallback timeout", e);
+                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+            }
+        } else {
+            // No NATS client or subscription failed, use fallback
             tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
         }
 
@@ -224,9 +242,18 @@ impl ModuleSwitchCoordinator {
         let client = self.nats_client.as_ref()
             .ok_or_else(|| anyhow::anyhow!("NATS client not configured for online detection"))?;
 
-        let mut subscriber = client.subscribe("sys.module.online").await
+        let subscriber = client.subscribe("sys.module.online").await
             .map_err(|e| anyhow::anyhow!("Failed to subscribe to sys.module.online: {}", e))?;
 
+        self.wait_for_module_online_with_subscription(module_id, subscriber).await
+    }
+
+    /// Wait for a module to come online using a pre-existing NATS subscription.
+    async fn wait_for_module_online_with_subscription(
+        &self,
+        module_id: &str,
+        mut subscriber: async_nats::Subscriber,
+    ) -> Result<()> {
         let timeout = tokio::time::Duration::from_secs(10);
         let start = std::time::Instant::now();
 

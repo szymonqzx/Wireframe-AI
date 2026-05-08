@@ -4,6 +4,13 @@
 //! Provides dashboards, alerts, and health monitoring.
 //! All data is persisted to SQLite for durability and historical analysis.
 //!
+//! Langfuse Integration:
+//! The langfuse-sdk is available for direct instrumentation in modules.
+//! To use Langfuse tracing in your module:
+//! 1. Add langfuse-sdk = "0.1" to your Cargo.toml
+//! 2. Set LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY environment variables
+//! 3. Use the #[observe] macro or with_span() closure API
+//!
 //! Subscribes to: metrics.>, trace.>, log.>, health.check
 //! Publishes to: metrics.aggregated, trace.span, health.status
 
@@ -150,6 +157,7 @@ impl ObservabilityModule {
             Err(_) => return vec![],
         };
 
+        // Store in local SQLite
         let db = self.db.lock().await;
         let attributes_json = serde_json::to_string(&span.attributes).unwrap_or_default();
         let _ = db.execute(
@@ -167,6 +175,11 @@ impl ObservabilityModule {
             ],
         );
         drop(db);
+
+        // Note: Langfuse SDK is available for direct instrumentation in modules.
+        // Traces received via NATS are stored locally. For Langfuse integration,
+        // individual modules should use the langfuse-sdk directly with the
+        // #[observe] macro or with_span() closure API.
 
         vec![Envelope::new(
             "trace.span",
@@ -322,6 +335,13 @@ impl ObservabilityModule {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
+
+    // Log Langfuse availability
+    if std::env::var("LANGFUSE_PUBLIC_KEY").is_ok()
+        && std::env::var("LANGFUSE_SECRET_KEY").is_ok()
+    {
+        tracing::info!("Langfuse credentials detected - modules can use langfuse-sdk for tracing");
+    }
 
     let db_path = std::env::var("WIREFRAME_AI_OBSERVABILITY_DB")
         .unwrap_or_else(|_| "wireframe_ai_observability.db".to_string());

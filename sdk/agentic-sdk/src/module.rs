@@ -287,7 +287,7 @@ impl MessageBuffer {
         if buffer.len() >= self.max_size {
             let messages = std::mem::take(&mut *buffer);
             // Release lock before publishing
-            let _ = buffer;
+            drop(buffer);
 
             let nc_clone = self.nc.clone();
             tokio::spawn(async move {
@@ -333,7 +333,6 @@ impl MessageBuffer {
         }
 
         let messages = std::mem::take(buffer);
-        let _ = buffer; // Release lock before publishing
 
         let nc_clone = nc.clone();
         tokio::spawn(async move {

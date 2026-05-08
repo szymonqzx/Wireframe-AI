@@ -55,10 +55,13 @@ pub struct ContextConfig {
     /// Maximum context tokens (default: 32768)
     pub max_context_tokens: usize,
     /// Storage plugin configuration
+    #[serde(default)]
     pub storage_plugin: Option<PluginConfig>,
     /// Memory plugin configuration
+    #[serde(default)]
     pub memory_plugin: Option<PluginConfig>,
     /// Enrichment plugins configuration
+    #[serde(default)]
     pub enrichment_plugins: Vec<PluginConfig>,
 }
 
@@ -70,8 +73,10 @@ pub struct InterfaceConfig {
     /// Whether to show welcome banner (default: true)
     pub show_banner: bool,
     /// Input plugin configuration
+    #[serde(default)]
     pub input_plugin: Option<PluginConfig>,
     /// Output plugin configuration
+    #[serde(default)]
     pub output_plugin: Option<PluginConfig>,
 }
 

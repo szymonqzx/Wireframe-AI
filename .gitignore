@@ -64,3 +64,4 @@ scripts/.build-cache/
 .windsurf
 .devin
 .agents
+integrations
