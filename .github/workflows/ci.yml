@@ -15,11 +15,11 @@ jobs:
 
     services:
       nats:
-        image: nats:latest
+        image: nats:alpine
         ports:
           - 4222:4222
         options: >-
-          --health-cmd "nats-server -version"
+          --health-cmd "nc -z localhost 4222 || exit 1"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5

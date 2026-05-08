@@ -186,7 +186,7 @@ pub async fn publish_errors_batch(
     let nc = nc.clone();
     
     // Publish all errors concurrently using join_all for better efficiency
-    let futs = errors.into_iter().filter_map(|(module_id, error_code, error_message)| {
+    let futs: Vec<_> = errors.into_iter().filter_map(|(module_id, error_code, error_message)| {
         let payload = serde_json::json!({
             "module_id": module_id,
             "error_code": error_code,
@@ -194,15 +194,17 @@ pub async fn publish_errors_batch(
             "ts": timestamp,
         });
         let env = Envelope::new("sys.module.error", payload, None);
+        let nc = nc.clone();
         env.to_bytes().ok().map(|data| {
-            let nc = nc.clone();
             async move {
                 let _ = nc.publish("sys.module.error", data.into()).await;
             }
         })
-    });
+    }).collect();
     
-    futures::future::join_all(futs).await;
+    let _ = tokio::spawn(async move {
+        futures::future::join_all(futs).await;
+    }).await;
     
     Ok(())
 }
@@ -219,14 +221,16 @@ pub async fn publish_envelopes_batch(
     }
     
     let nc = nc.clone();
-    let futs = envelopes.into_iter().map(|(subject, data)| {
+    let futs: Vec<_> = envelopes.into_iter().map(|(subject, data)| {
         let nc = nc.clone();
         async move {
             let _ = nc.publish(subject, data.into()).await;
         }
-    });
+    }).collect();
     
-    futures::future::join_all(futs).await;
+    let _ = tokio::spawn(async move {
+        futures::future::join_all(futs).await;
+    }).await;
     
     Ok(())
 }
