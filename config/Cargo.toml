@@ -12,3 +12,7 @@ anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 toml = { workspace = true }
 notify = "6"
+
+[dev-dependencies]
+tempfile = { workspace = true }
+serial_test = "3"

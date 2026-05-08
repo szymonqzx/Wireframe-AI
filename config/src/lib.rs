@@ -226,9 +226,18 @@ impl WireframeConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
+    use tempfile::NamedTempFile;
+    use std::io::Write;
 
     #[test]
+    #[serial]
     fn test_default_config() {
+        // Ensure no env var overrides affect the test
+        env::remove_var("WIREFRAME_AI_NATS_URL");
+        env::remove_var("WIREFRAME_AI_CONCURRENCY");
+        env::remove_var("WIREFRAME_AI_CONTEXT_DB");
+
         let config = WireframeConfig::default();
         assert_eq!(config.nats.url, "nats://localhost:4222");
         assert_eq!(config.orchestrator.concurrency, 3);
@@ -244,15 +253,25 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_config_manager_get() {
+        // Ensure no env var overrides affect the test
+        env::remove_var("WIREFRAME_AI_NATS_URL");
+
         let manager = ConfigManager::new();
         let config = manager.get().await;
         assert_eq!(config.nats.url, "nats://localhost:4222");
     }
 
     #[test]
+    #[serial]
     fn test_config_from_file() -> Result<()> {
-        let path = "test_config_lib.toml";
+        // Ensure no env var overrides affect the test
+        env::remove_var("WIREFRAME_AI_NATS_URL");
+        env::remove_var("WIREFRAME_AI_CONCURRENCY");
+        env::remove_var("WIREFRAME_AI_CONTEXT_DB");
+
+        let mut file = NamedTempFile::new()?;
         let toml_content = r#"
 [nats]
 url = "nats://test-host:4222"
@@ -273,14 +292,11 @@ max_context_tokens = 32768
 default_timeout_secs = 300
 show_banner = true
 "#;
-        std::fs::write(path, toml_content)?;
+        writeln!(file, "{}", toml_content)?;
+        let path = file.path().to_str().unwrap();
 
-        let result = WireframeConfig::from_file(path);
+        let config = WireframeConfig::from_file(path)?;
 
-        // Clean up before asserting to ensure it happens
-        let _ = std::fs::remove_file(path);
-
-        let config = result?;
         assert_eq!(config.nats.url, "nats://test-host:4222");
         assert_eq!(config.orchestrator.concurrency, 5);
         assert_eq!(config.context.db_path, "./test.db");
