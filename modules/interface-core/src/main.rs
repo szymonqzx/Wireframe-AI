@@ -12,9 +12,10 @@
 use agentic_sdk::{Envelope, Module};
 use agentic_sdk::plugins::interface::{InputError, FormatError};
 use async_nats::Client;
+use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use wireframe_ai_interface_core::InterfaceCore;
 use wireframe_config::WireframeConfig;
 
