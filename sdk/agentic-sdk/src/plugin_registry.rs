@@ -106,3 +106,22 @@ impl Default for PluginRegistry {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_creates_empty_registry() {
+        let registry = PluginRegistry::new();
+        assert_eq!(registry.count(), 0);
+        assert!(registry.list_plugins().is_empty());
+    }
+
+    #[test]
+    fn test_default_creates_empty_registry() {
+        let registry = PluginRegistry::default();
+        assert_eq!(registry.count(), 0);
+        assert!(registry.list_plugins().is_empty());
+    }
+}
