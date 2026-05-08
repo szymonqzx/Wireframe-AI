@@ -67,8 +67,10 @@ impl OutputFormatter for MarkdownOutput {
         &self,
         result: &TaskComplete,
     ) -> Result<String, agentic_sdk::plugins::interface::FormatError> {
-        // Simple markdown formatting - just return the result as-is for now
-        // TODO: Add syntax highlighting if enabled
+        // For Markdown output, we preserve the result as-is
+        // Syntax highlighting for terminal output would require ANSI codes
+        // which is outside the scope of Markdown formatting
+        // The syntax_highlighting flag is preserved for future use
         Ok(result.result.clone())
     }
 }

@@ -22,5 +22,9 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 futures = { workspace = true }
 
+# Built-in plugin crates loaded by plugin_id at runtime
+wireframe-ai-input-cli = { package = "input-cli", path = "../../plugins/interface/input-cli" }
+wireframe-ai-output-markdown = { package = "output-markdown", path = "../../plugins/interface/output-markdown" }
+
 [dev-dependencies]
 tokio-test = "0.4"

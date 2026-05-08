@@ -12,33 +12,7 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tracing::info;
 
-/// Simple buffer pool for reducing allocations in message batching
-struct BufferPool {
-    pool: std::sync::Mutex<Vec<Vec<(String, Vec<u8>)>>>,
-    max_size: usize,
-}
-
-impl BufferPool {
-    fn new(max_size: usize) -> Self {
-        Self {
-            pool: std::sync::Mutex::new(Vec::with_capacity(max_size)),
-            max_size,
-        }
-    }
-
-    fn acquire(&self) -> Vec<(String, Vec<u8>)> {
-        let mut pool = self.pool.lock().unwrap();
-        pool.pop().unwrap_or_else(|| Vec::with_capacity(16))
-    }
-
-    fn release(&self, mut buffer: Vec<(String, Vec<u8>)>) {
-        let mut pool = self.pool.lock().unwrap();
-        if pool.len() < self.max_size {
-            buffer.clear();
-            pool.push(buffer);
-        }
-    }
-}
+type MessageBufferInner = Vec<(String, Vec<u8>)>;
 
 /// The Module trait — every Wireframe AI module implements this.
 ///
@@ -183,30 +157,48 @@ pub async fn publish_errors_batch(
     }
 
     let timestamp = chrono::Utc::now().timestamp();
-    let nc = nc.clone();
 
     // Publish all errors concurrently using join_all for better efficiency
-    let futs: Vec<_> = errors
-        .into_iter()
-        .filter_map(|(module_id, error_code, error_message)| {
-            let payload = serde_json::json!({
-                "module_id": module_id,
-                "error_code": error_code,
-                "error_message": error_message,
-                "ts": timestamp,
-            });
-            let env = Envelope::new("sys.module.error", payload, None);
-            let nc = nc.clone();
-            env.to_bytes().ok().map(|data| async move {
-                let _ = nc.publish("sys.module.error", data.into()).await;
-            })
-        })
-        .collect();
+    let mut futures = Vec::new();
+    let mut serialization_errors = Vec::new();
 
-    let _ = tokio::spawn(async move {
-        futures::future::join_all(futs).await;
-    })
-    .await;
+    for (module_id, error_code, error_message) in errors {
+        let payload = serde_json::json!({
+            "module_id": module_id,
+            "error_code": error_code,
+            "error_message": error_message,
+            "ts": timestamp,
+        });
+        let env = Envelope::new("sys.module.error", payload, None);
+        match env.to_bytes() {
+            Ok(data) => {
+                futures.push(nc.publish("sys.module.error", data.into()));
+            }
+            Err(e) => {
+                tracing::error!("Failed to serialize error for module {}: {}", module_id, e);
+                serialization_errors.push(e);
+            }
+        }
+    }
+
+    // Wait for all publishes to complete and log any errors
+    let results = futures::future::join_all(futures).await;
+    let mut publish_errors = Vec::new();
+    for result in results {
+        if let Err(e) = result {
+            tracing::error!("Failed to publish error message: {}", e);
+            publish_errors.push(e);
+        }
+    }
+
+    // Return error if any serialization or publish errors occurred
+    if !serialization_errors.is_empty() || !publish_errors.is_empty() {
+        return Err(format!(
+            "Failed to publish errors: {} serialization errors, {} publish errors",
+            serialization_errors.len(),
+            publish_errors.len()
+        ).into());
+    }
 
     Ok(())
 }
@@ -222,21 +214,30 @@ pub async fn publish_envelopes_batch(
         return Ok(());
     }
 
-    let nc = nc.clone();
-    let futs: Vec<_> = envelopes
+    let futures: Vec<_> = envelopes
         .into_iter()
         .map(|(subject, data)| {
-            let nc = nc.clone();
-            async move {
-                let _ = nc.publish(subject, data.into()).await;
-            }
+            nc.publish(subject, data.into())
         })
         .collect();
 
-    let _ = tokio::spawn(async move {
-        futures::future::join_all(futs).await;
-    })
-    .await;
+    // Wait for all publishes to complete and log any errors
+    let results = futures::future::join_all(futures).await;
+    let mut publish_errors = Vec::new();
+    for result in results {
+        if let Err(e) = result {
+            tracing::error!("Failed to publish envelope: {}", e);
+            publish_errors.push(e);
+        }
+    }
+
+    // Return error if any publish errors occurred
+    if !publish_errors.is_empty() {
+        return Err(format!(
+            "Failed to publish {} envelopes",
+            publish_errors.len()
+        ).into());
+    }
 
     Ok(())
 }
@@ -244,12 +245,12 @@ pub async fn publish_envelopes_batch(
 /// Message buffer for batching NATS publishes with automatic flushing.
 /// Reduces network round trips and improves throughput.
 pub struct MessageBuffer {
-    buffer: Arc<Mutex<Vec<(String, Vec<u8>)>>>,
+    buffer: Arc<Mutex<MessageBufferInner>>,
     max_size: usize,
+    #[allow(dead_code)]
     max_age: Duration,
     nc: Arc<Client>,
     flush_task: Option<tokio::task::JoinHandle<()>>,
-    buffer_pool: Arc<BufferPool>,
 }
 
 impl MessageBuffer {
@@ -258,15 +259,13 @@ impl MessageBuffer {
         let buffer = Arc::new(Mutex::new(Vec::with_capacity(max_size)));
         let buffer_clone = buffer.clone();
         let nc_clone = nc.clone();
-        let buffer_pool = Arc::new(BufferPool::new(16));
 
         // Start background flush task
-        let buffer_pool_clone = buffer_pool.clone();
         let flush_task = tokio::spawn(async move {
             let mut interval = tokio::time::interval(max_age);
             loop {
                 interval.tick().await;
-                Self::flush_buffer(&buffer_clone, &nc_clone, &buffer_pool_clone).await;
+                Self::flush_buffer(&buffer_clone, &nc_clone).await;
             }
         });
 
@@ -276,7 +275,6 @@ impl MessageBuffer {
             max_age,
             nc,
             flush_task: Some(flush_task),
-            buffer_pool,
         }
     }
 
@@ -289,21 +287,23 @@ impl MessageBuffer {
         if buffer.len() >= self.max_size {
             let messages = std::mem::take(&mut *buffer);
             // Release lock before publishing
-            let _ = buffer;
+            drop(buffer);
 
             let nc_clone = self.nc.clone();
-            let pool_clone = self.buffer_pool.clone();
             tokio::spawn(async move {
-                let mut messages = messages;
-                let futs = messages.drain(..).map(|(subject, data)| {
-                    let nc = nc_clone.clone();
-                    async move {
-                        let _ = nc.publish(subject, data.into()).await;
+                let futures: Vec<_> = messages
+                    .into_iter()
+                    .map(|(subject, data)| {
+                        nc_clone.publish(subject, data.into())
+                    })
+                    .collect();
+
+                let results = futures::future::join_all(futures).await;
+                for result in results {
+                    if let Err(e) = result {
+                        tracing::error!("Failed to publish message from buffer: {}", e);
                     }
-                });
-                futures::future::join_all(futs).await;
-                // Return the buffer to the pool for reuse
-                pool_clone.release(messages);
+                }
             });
         }
     }
@@ -311,24 +311,22 @@ impl MessageBuffer {
     /// Manually flush the buffer.
     #[inline]
     pub async fn flush(&self) {
-        Self::flush_buffer(&self.buffer, &self.nc, &self.buffer_pool).await;
+        Self::flush_buffer(&self.buffer, &self.nc).await;
     }
 
     /// Flush the buffer (internal).
     async fn flush_buffer(
-        buffer: &Arc<Mutex<Vec<(String, Vec<u8>)>>>,
+        buffer: &Arc<Mutex<MessageBufferInner>>,
         nc: &Arc<Client>,
-        pool: &Arc<BufferPool>,
     ) {
         let mut buffer = buffer.lock().await;
-        Self::flush_buffer_unlocked(&mut *buffer, nc, pool).await;
+        Self::flush_buffer_unlocked(&mut buffer, nc).await;
     }
 
     /// Flush the buffer with lock already held (internal).
     async fn flush_buffer_unlocked(
-        buffer: &mut Vec<(String, Vec<u8>)>,
+        buffer: &mut MessageBufferInner,
         nc: &Arc<Client>,
-        pool: &Arc<BufferPool>,
     ) {
         if buffer.is_empty() {
             return;
@@ -337,18 +335,20 @@ impl MessageBuffer {
         let messages = std::mem::take(buffer);
 
         let nc_clone = nc.clone();
-        let pool_clone = pool.clone();
         tokio::spawn(async move {
-            let mut messages = messages;
-            let futs = messages.drain(..).map(|(subject, data)| {
-                let nc = nc_clone.clone();
-                async move {
-                    let _ = nc.publish(subject, data.into()).await;
+            let futures: Vec<_> = messages
+                .into_iter()
+                .map(|(subject, data)| {
+                    nc_clone.publish(subject, data.into())
+                })
+                .collect();
+
+            let results = futures::future::join_all(futures).await;
+            for result in results {
+                if let Err(e) = result {
+                    tracing::error!("Failed to publish message from buffer: {}", e);
                 }
-            });
-            futures::future::join_all(futs).await;
-            // Return the buffer to the pool for reuse
-            pool_clone.release(messages);
+            }
         });
     }
 
@@ -370,9 +370,8 @@ impl Drop for MessageBuffer {
         // Flush remaining messages on drop
         let buffer = self.buffer.clone();
         let nc = self.nc.clone();
-        let buffer_pool = self.buffer_pool.clone();
         tokio::spawn(async move {
-            Self::flush_buffer(&buffer, &nc, &buffer_pool).await;
+            Self::flush_buffer(&buffer, &nc).await;
         });
 
         // Abort the flush task

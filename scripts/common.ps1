@@ -1,10 +1,10 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 # TEAM_006: Common utilities and functions for Wireframe-AI scripts
 # Provides centralized error handling, logging, progress indicators, and retry logic
 
 $ErrorActionPreference = "Stop"
 
-# â”€â”€ Color Configuration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# -- Color Configuration --
 $global:ScriptColors = @{
     Info    = "Cyan"
     Ok      = "Green"
@@ -14,7 +14,7 @@ $global:ScriptColors = @{
     Muted   = "Gray"
 }
 
-# â”€â”€ Logging Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# -- Logging Functions --
 function Write-Step {
     param([string]$Text)
     Write-Host "`n  >> $Text" -ForegroundColor $global:ScriptColors.Info
@@ -22,22 +22,22 @@ function Write-Step {
 
 function Write-Ok {
     param([string]$Text)
-    Write-Host "     âœ“ $Text" -ForegroundColor $global:ScriptColors.Ok
+    Write-Host "     [OK] $Text" -ForegroundColor $global:ScriptColors.Ok
 }
 
 function Write-Warn {
     param([string]$Text)
-    Write-Host "     âš  $Text" -ForegroundColor $global:ScriptColors.Warn
+    Write-Host "     [WARN] $Text" -ForegroundColor $global:ScriptColors.Warn
 }
 
 function Write-Error {
     param([string]$Text)
-    Write-Host "     âœ— $Text" -ForegroundColor $global:ScriptColors.Err
+    Write-Host "     [ERROR] $Text" -ForegroundColor $global:ScriptColors.Err
 }
 
 function Write-InfoMsg {
     param([string]$Text)
-    Write-Host "     â„¹ $Text" -ForegroundColor $global:ScriptColors.Info
+    Write-Host "     [INFO] $Text" -ForegroundColor $global:ScriptColors.Info
 }
 
 function Write-Muted {
@@ -45,7 +45,7 @@ function Write-Muted {
     Write-Host "     $Text" -ForegroundColor $global:ScriptColors.Muted
 }
 
-# â”€â”€ Progress Indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# -- Progress Indicator --
 $global:ProgressChars = @('/', '-', '\', '|')
 $global:ProgressIndex = 0
 
@@ -72,7 +72,7 @@ function Clear-Progress {
     Write-Host "`r$(' ' * 80)`r" -NoNewline
 }
 
-# â”€â”€ Error Handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# -- Error Handling --
 function Invoke-WithErrorHandling {
     param(
         [scriptblock]$ScriptBlock,
@@ -92,7 +92,7 @@ function Invoke-WithErrorHandling {
     }
 }
 
-# â”€â”€ Retry Logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# -- Retry Logic --
 function Invoke-WithRetry {
     param(
         [scriptblock]$ScriptBlock,
@@ -120,7 +120,7 @@ function Invoke-WithRetry {
     }
 }
 
-# â”€â”€ Process Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# -- Process Management --
 $global:ManagedProcesses = @{}
 
 function Start-TrackedProcess {
@@ -173,7 +173,7 @@ function Stop-AllTrackedProcesses {
     }
 }
 
-# â”€â”€ Cleanup Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# -- Cleanup Handler --
 $global:CleanupHandlers = @()
 
 function Register-Cleanup {
@@ -196,163 +196,65 @@ $null = Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
     Invoke-Cleanup
 }
 
-# â”€â”€ Configuration Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function Get-ScriptConfig {
-    param([string]$ConfigPath = "$PSScriptRoot/config.json")
-
-    if (Test-Path $ConfigPath) {
-        return Get-Content $ConfigPath -Raw | ConvertFrom-Json
-    } else {
-        return @{}
-    }
-}
-
-function Set-ScriptConfig {
+# -- Configuration Management --
+function Get-ConfigValue {
     param(
-        [hashtable]$Config,
-        [string]$ConfigPath = "$PSScriptRoot/config.json"
+        [string]$Key,
+        [string]$Default = ""
     )
-
-    $Config | ConvertTo-Json -Depth 10 | Set-Content $ConfigPath
+    $envValue = [Environment]::GetEnvironmentVariable($Key)
+    if (-not [string]::IsNullOrWhiteSpace($envValue)) {
+        return $envValue
+    }
+    return $Default
 }
 
-# â”€â”€ Validation Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function Set-ConfigValue {
+    param(
+        [string]$Key,
+        [string]$Value
+    )
+    [Environment]::SetEnvironmentVariable($Key, $Value, "User")
+}
+
+# -- Command Validation --
 function Test-Command {
-    param([string]$Name)
-    $null = Get-Command $Name -ErrorAction SilentlyContinue
-    return $?
-}
-
-function Test-FileExists {
-    param([string]$Path)
-    if (Test-Path $Path) {
-        return $true
-    } else {
-        Write-Warn "File not found: $Path"
-        return $false
-    }
-}
-
-function Test-PortAvailable {
-    param(
-        [int]$Port,
-        [string]$Host = "localhost"
-    )
-
+    param([string]$Command)
     try {
-        $tcp = New-Object System.Net.Sockets.TcpClient
-        $tcp.Connect($Host, $Port)
-        $tcp.Close()
-        return $false
-    } catch {
+        $null = Get-Command $Command -ErrorAction Stop
         return $true
-    }
-}
-
-# â”€â”€ Timing Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function Start-Timer {
-    return [System.Diagnostics.Stopwatch]::StartNew()
-}
-
-function Stop-Timer {
-    param([System.Diagnostics.Stopwatch]$Timer)
-    $Timer.Stop()
-    return $Timer.Elapsed
-}
-
-function Format-Duration {
-    param([TimeSpan]$Duration)
-
-    if ($Duration.TotalMinutes -ge 1) {
-        return "$([int]$Duration.TotalMinutes)m $([int]$Duration.TotalSeconds % 60)s"
-    } else {
-        return "$([int]$Duration.TotalSeconds)s"
-    }
-}
-
-# â”€â”€ HTTP Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function Invoke-Download {
-    param(
-        [string]$Url,
-        [string]$OutPath,
-        [string]$Description = "file"
-    )
-
-    Write-InfoMsg "Downloading $Description..."
-    Invoke-WithRetry -OperationName "Download" -ScriptBlock {
-        Invoke-WebRequest -Uri $Url -OutFile $OutPath -UseBasicParsing
-    }
-}
-
-# â”€â”€ File Hash Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function Get-FileHashEx {
-    param(
-        [string]$Path,
-        [string]$Algorithm = "SHA256"
-    )
-
-    if (-not (Test-Path $Path)) {
-        throw "File not found: $Path"
-    }
-
-    $hash = Get-FileHash -Path $Path -Algorithm $Algorithm -ErrorAction Stop
-    return $hash.Hash
-}
-
-# â”€â”€ Directory Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function Ensure-DirectoryExists {
-    param(
-        [string]$Path,
-        [string]$Description = "directory"
-    )
-
-    if (-not (Test-Path $Path)) {
-        try {
-            New-Item -ItemType Directory -Path $Path -Force -ErrorAction Stop | Out-Null
-            Write-Ok "Created ${Description}: $Path"
-        } catch {
-            Write-Error "Failed to create ${Description}: $($_.Exception.Message)"
-            throw
-        }
-    }
-}
-
-# â”€â”€ Process Validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function Test-ProcessRunning {
-    param(
-        [string]$ProcessName
-    )
-
-    $process = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue
-    return $null -ne $process
-}
-
-# â”€â”€ Network Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function Test-UrlAccessible {
-    param(
-        [string]$Url,
-        [int]$TimeoutSeconds = 30
-    )
-
-    try {
-        $response = Invoke-WebRequest -Uri $Url -Method Head -UseBasicParsing -TimeoutSec $TimeoutSeconds -ErrorAction Stop
-        return $response.StatusCode -eq 200
     } catch {
         return $false
     }
 }
 
-# â”€â”€ Version Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function Test-VersionFormat {
+# -- Version Checking --
+function Test-MinimumVersion {
     param(
-        [string]$Version,
-        [string]$Pattern = "^\d+\.\d+\.\d+$"
+        [string]$CurrentVersion,
+        [string]$MinimumVersion
     )
 
-    return $Version -match $Pattern
+    $current = [version]$CurrentVersion
+    $minimum = [version]$MinimumVersion
+
+    return $current -ge $minimum
 }
 
-# â”€â”€ Build Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function Get-VersionNumber {
+    param(
+        [string]$VersionString,
+        [string]$Pattern = "\d+\.\d+\.\d+"
+    )
+
+    if ($VersionString -match $Pattern) {
+        return $matches[0]
+    }
+
+    return $null
+}
+
+# -- Build Utilities --
 function Get-PackageSourceHash {
     param(
         [string]$PackagePath
@@ -370,34 +272,147 @@ function Get-PackageSourceHash {
     return $null
 }
 
-# â”€â”€ Logging to File â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# -- Logging to File --
 function Start-FileLogging {
     param(
         [string]$LogPath,
         [switch]$Append
     )
 
+    $logDir = Split-Path $LogPath -Parent
+    if (-not (Test-Path $logDir)) {
+        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+    }
+
     if ($Append) {
         Start-Transcript -Path $LogPath -Append
     } else {
         Start-Transcript -Path $LogPath
     }
+}
 
-    Register-Cleanup -Handler {
-        Stop-Transcript -ErrorAction SilentlyContinue
+function Stop-FileLogging {
+    Stop-Transcript
+}
+
+# -- Network Utilities --
+function Test-Port {
+    param(
+        [string]$HostName,
+        [int]$Port,
+        [int]$TimeoutMs = 5000
+    )
+
+    try {
+        $tcpClient = New-Object System.Net.Sockets.TcpClient
+        $connectTask = $tcpClient.ConnectAsync($HostName, $Port)
+        $completed = $connectTask.Wait($TimeoutMs)
+
+        if ($completed) {
+            $tcpClient.Close()
+            return $true
+        } else {
+            $tcpClient.Close()
+            return $false
+        }
+    } catch {
+        return $false
     }
 }
 
-# â”€â”€ Module Information â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function Get-ScriptInfo {
-    $scriptPath = $MyInvocation.PSCommandPath
-    $scriptDir = Split-Path $scriptPath -Parent
-    $rootDir = Split-Path $scriptDir -Parent
+# -- Directory Utilities --
+function Ensure-Directory {
+    param([string]$Path)
 
-    return @{
-        ScriptPath = $scriptPath
-        ScriptDir  = $scriptDir
-        RootDir    = $rootDir
+    if (-not (Test-Path $Path)) {
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
     }
 }
 
+function Remove-DirectorySafely {
+    param(
+        [string]$Path,
+        [switch]$Recurse
+    )
+
+    if (Test-Path $Path) {
+        Remove-Item -Path $Path -Force:$Recurse -Recurse:$Recurse
+    }
+}
+
+# -- File Utilities --
+function Get-FileHashSafe {
+    param(
+        [string]$Path,
+        [string]$Algorithm = "SHA256"
+    )
+
+    if (Test-Path $Path) {
+        try {
+            return (Get-FileHash -Path $Path -Algorithm $Algorithm).Hash
+        } catch {
+            return $null
+        }
+    }
+    return $null
+}
+
+# -- String Utilities --
+function New-GuidString {
+    return [Guid]::NewGuid().ToString()
+}
+
+function Get-Timestamp {
+    return Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+}
+
+# -- Platform Detection --
+function Test-Windows {
+    return $PSVersionTable.Platform -eq "Win32NT" -or $IsWindows
+}
+
+function Test-Linux {
+    return $PSVersionTable.Platform -eq "Unix" -and $IsLinux
+}
+
+function Test-MacOS {
+    return $PSVersionTable.Platform -eq "Unix" -and $IsMacOS
+}
+
+# -- Timer Functions --
+function Start-Timer {
+    return Get-Date
+}
+
+function Stop-Timer {
+    param(
+        [DateTime]$Timer
+    )
+    $endTime = Get-Date
+    return $endTime - $Timer
+}
+
+function Format-Duration {
+    param(
+        [TimeSpan]$Duration
+    )
+
+    if ($Duration.TotalSeconds -lt 1) {
+        return "$($Duration.TotalMilliseconds.ToString('0'))ms"
+    } elseif ($Duration.TotalMinutes -lt 1) {
+        return "$($Duration.TotalSeconds.ToString('0.0'))s"
+    } elseif ($Duration.TotalHours -lt 1) {
+        return "$($Duration.TotalMinutes.ToString('0.0'))m"
+    } else {
+        return "$($Duration.TotalHours.ToString('0.0'))h"
+    }
+}
+
+function Test-ProcessRunning {
+    param(
+        [string]$ProcessName
+    )
+    
+    $processes = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like "$ProcessName*" }
+    return $processes -ne $null
+}

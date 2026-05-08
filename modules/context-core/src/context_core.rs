@@ -1,11 +1,8 @@
 use agentic_sdk::envelope::Envelope;
-use agentic_sdk::message_types::{
-    ChatMessage, ContextPackage, TaskComplete, TaskEnriched, TaskSubmitted,
-};
-use agentic_sdk::plugins::context::{EnrichmentStrategy, MemoryBackend, StorageBackend};
-use std::collections::HashMap;
-use std::path::PathBuf;
+use agentic_sdk::message_types::{ContextPackage, TaskComplete, TaskEnriched, TaskSubmitted, ChatMessage, MemoryChunk};
+use agentic_sdk::plugins::context::{EnrichmentStrategy, MemoryBackend, StorageBackend, StorageError, MemoryError, EnrichmentError};
 use std::sync::Arc;
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::sync::{RwLock, Semaphore};
 use tracing::{error, info};
@@ -160,11 +157,8 @@ impl<T: Clone> LruCache<T> {
         if let Some(entry) = self.entries.get_mut(key) {
             // Check version-based invalidation
             if self.invalidation_strategy == InvalidationStrategy::VersionBased
-                || self.invalidation_strategy == InvalidationStrategy::Combined
-            {
-                let global_ver = self
-                    .global_version
-                    .load(std::sync::atomic::Ordering::SeqCst);
+                || self.invalidation_strategy == InvalidationStrategy::Combined {
+                let global_ver = self.global_version.load(std::sync::atomic::Ordering::SeqCst);
                 if entry.version() < global_ver {
                     self.entries.remove(key);
                     return None;
@@ -198,9 +192,7 @@ impl<T: Clone> LruCache<T> {
             }
         }
 
-        let current_version = self
-            .global_version
-            .load(std::sync::atomic::Ordering::SeqCst);
+        let current_version = self.global_version.load(std::sync::atomic::Ordering::SeqCst);
         let mut entry = CacheEntry::new(value);
         entry.version = current_version;
         self.entries.insert(key, entry);
@@ -422,11 +414,8 @@ impl ContextCore {
         }
 
         // 5. Run enrichment pipeline with caching
-        let enrichment_key = format!(
-            "enrich:{}:{}",
-            task.session_id,
-            task.user_input.chars().take(50).collect::<String>()
-        );
+        let enrichment_key = format!("enrich:{}:{}", task.session_id,
+            task.user_input.chars().take(50).collect::<String>());
         let context = {
             let mut cache = self.enrichment_cache.write().await;
             if let Some(cached) = cache.get(&enrichment_key) {
@@ -486,5 +475,136 @@ impl ContextCore {
         }
 
         Ok(())
+    }
+}
+
+/// Built-in in-memory storage backend for basic functionality.
+pub struct InMemoryStorage {
+    sessions: Arc<RwLock<HashMap<String, Vec<ChatMessage>>>>,
+}
+
+impl InMemoryStorage {
+    pub fn new() -> Self {
+        Self {
+            sessions: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl StorageBackend for InMemoryStorage {
+    async fn ensure_session(&self, session_id: &str) -> Result<(), StorageError> {
+        let mut sessions = self.sessions.write().await;
+        if !sessions.contains_key(session_id) {
+            sessions.insert(session_id.to_string(), Vec::new());
+        }
+        Ok(())
+    }
+
+    async fn store_message(
+        &self,
+        session_id: &str,
+        role: &str,
+        content: &str,
+    ) -> Result<(), StorageError> {
+        let mut sessions = self.sessions.write().await;
+        let messages = sessions.entry(session_id.to_string()).or_insert_with(Vec::new);
+        messages.push(ChatMessage {
+            role: role.to_string(),
+            content: content.to_string(),
+            timestamp: chrono::Utc::now().timestamp(),
+        });
+        Ok(())
+    }
+
+    async fn load_session_history(
+        &self,
+        session_id: &str,
+        limit: usize,
+    ) -> Result<Vec<ChatMessage>, StorageError> {
+        let sessions = self.sessions.read().await;
+        Ok(sessions
+            .get(session_id)
+            .map(|msgs| {
+                let len = msgs.len();
+                if len > limit {
+                    msgs[len - limit..].to_vec()
+                } else {
+                    msgs.clone()
+                }
+            })
+            .unwrap_or_default())
+    }
+}
+
+/// Built-in in-memory memory backend for basic functionality.
+pub struct InMemoryBackend {
+    chunks: Arc<RwLock<HashMap<String, Vec<MemoryChunk>>>>,
+}
+
+impl InMemoryBackend {
+    pub fn new() -> Self {
+        Self {
+            chunks: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl MemoryBackend for InMemoryBackend {
+    async fn search(
+        &self,
+        query: &str,
+        session_id: &str,
+        limit: usize,
+    ) -> Result<Vec<MemoryChunk>, MemoryError> {
+        let chunks = self.chunks.read().await;
+        let all_chunks = chunks.get(session_id).cloned().unwrap_or_default();
+
+        // Simple substring matching for basic functionality
+        let query_lower = query.to_lowercase();
+        let matched: Vec<MemoryChunk> = all_chunks
+            .into_iter()
+            .filter(|chunk| chunk.content.to_lowercase().contains(&query_lower))
+            .take(limit)
+            .collect();
+
+        Ok(matched)
+    }
+
+    async fn persist_chunk(
+        &self,
+        session_id: &str,
+        content: &str,
+        source: &str,
+    ) -> Result<(), MemoryError> {
+        let mut chunks = self.chunks.write().await;
+        let session_chunks = chunks.entry(session_id.to_string()).or_insert_with(Vec::new);
+        session_chunks.push(MemoryChunk {
+            id: format!("mem_{}", session_chunks.len()),
+            content: content.to_string(),
+            source: source.to_string(),
+            relevance_score: 1.0,
+        });
+        Ok(())
+    }
+
+    async fn load_chunks(
+        &self,
+        session_id: &str,
+        limit: usize,
+    ) -> Result<Vec<MemoryChunk>, MemoryError> {
+        let chunks = self.chunks.read().await;
+        Ok(chunks
+            .get(session_id)
+            .map(|session_chunks| {
+                let len = session_chunks.len();
+                if len > limit {
+                    session_chunks[len - limit..].to_vec()
+                } else {
+                    session_chunks.clone()
+                }
+            })
+            .unwrap_or_default())
     }
 }

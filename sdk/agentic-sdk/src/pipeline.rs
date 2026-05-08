@@ -91,3 +91,22 @@ pub enum PipelineError {
     #[error("Order conflict: duplicate order {0}")]
     OrderConflict(usize),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_creates_empty_pipeline() {
+        let pipeline = Pipeline::new();
+        assert!(pipeline.is_empty());
+        assert_eq!(pipeline.len(), 0);
+    }
+
+    #[test]
+    fn test_default_creates_empty_pipeline() {
+        let pipeline = Pipeline::default();
+        assert!(pipeline.is_empty());
+        assert_eq!(pipeline.len(), 0);
+    }
+}

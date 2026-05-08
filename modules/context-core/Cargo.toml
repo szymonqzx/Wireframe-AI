@@ -17,6 +17,11 @@ serde_yaml = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 chrono = { workspace = true }
 
+# Built-in plugin crates loaded by plugin_id at runtime
+wireframe-ai-storage-sqlite = { package = "storage-sqlite", path = "../../plugins/context/storage-sqlite" }
+wireframe-ai-memory-fts5 = { package = "memory-fts5", path = "../../plugins/context/memory-fts5" }
+wireframe-ai-enrichment-env = { package = "enrichment-env", path = "../../plugins/context/enrichment-env" }
+
 [dev-dependencies]
 tempfile = { workspace = true }
 
