@@ -53,20 +53,11 @@ impl Default for RenderState {
 }
 
 /// UI renderer
-pub struct Renderer {
-    state: Arc<RwLock<RenderState>>,
-}
+pub struct Renderer {}
 
 impl Renderer {
     pub fn new() -> Self {
-        Self {
-            state: Arc::new(RwLock::new(RenderState::default())),
-        }
-    }
-
-    /// Get state
-    pub fn state(&self) -> Arc<RwLock<RenderState>> {
-        self.state.clone()
+        Self {}
     }
 
     /// Render the UI
@@ -167,9 +158,13 @@ impl Renderer {
             })
             .collect();
 
-        let messages_paragraph = Paragraph::new(messages_text)
-            .wrap(Wrap { trim: true })
-            .scroll((state.messages.len().saturating_sub(messages_area.height as usize) as u16, 0)); // Auto-scroll to bottom
+        let text = ratatui::text::Text::from(messages_text);
+        let visual_lines = text.height();
+
+        let messages_paragraph = Paragraph::new(text).wrap(Wrap { trim: true }).scroll((
+            visual_lines.saturating_sub(messages_area.height as usize) as u16,
+            0,
+        )); // Auto-scroll to bottom
 
         f.render_widget(messages_paragraph, messages_area);
 
@@ -207,6 +202,8 @@ impl Renderer {
 
     /// Helper to center a rect
     pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+        let percent_x = percent_x.min(100);
+        let percent_y = percent_y.min(100);
         let popup_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([

@@ -55,8 +55,8 @@ async fn main() -> Result<()> {
     let input_buffer = Arc::new(tokio::sync::Mutex::new(InputBuffer::new()));
 
     // Spawn input handler in background
-    tokio::spawn(async move {
-        let _ = input_handler.run().await;
+    tokio::task::spawn_blocking(move || {
+        let _ = input_handler.run();
     });
 
     let app_state_clone = app.state();

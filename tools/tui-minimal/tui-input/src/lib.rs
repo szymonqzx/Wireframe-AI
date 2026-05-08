@@ -52,7 +52,7 @@ impl InputHandler {
     }
 
     /// Start reading input events
-    pub async fn run(&self) -> Result<()> {
+    pub fn run(&self) -> Result<()> {
         loop {
             if event::poll(std::time::Duration::from_millis(100))? {
                 if let Event::Key(key) = event::read()? {
