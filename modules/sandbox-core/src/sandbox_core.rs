@@ -161,8 +161,12 @@ impl SandboxCore {
                 }
             } else if tool_name == "http" {
                 if let Some(url) = params.get("url").and_then(|v| v.as_str()) {
-                    security.validate_network_access(url).await?;
+                    let allowed = security.validate_network_access(url).await?;
+                    if !allowed {
+                        return Err(Box::from(format!("Network access to '{}' denied by security policy", url)));
+                    }
                 }
+
             }
         }
 
