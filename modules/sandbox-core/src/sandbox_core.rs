@@ -173,27 +173,27 @@ impl SandboxCore {
             // Validate file operations
             if tool_name == "file_read" {
                 if let Some(path) = params.get("path").and_then(|v| v.as_str()) {
-                    security
-                        .validate_file_access(
-                            path,
-                            agentic_sdk::plugins::sandbox::FileOperation::Read,
-                        )
-                        .await?;
+                    if !security.validate_file_access(path, agentic_sdk::plugins::sandbox::FileOperation::Read).await? {
+                        return Err(Box::new(agentic_sdk::plugins::sandbox::SecurityError::FileAccessDenied(path.to_string())));
+                    }
                 }
             } else if tool_name == "file_write" {
                 if let Some(path) = params.get("path").and_then(|v| v.as_str()) {
-                    security
-                        .validate_file_access(
-                            path,
-                            agentic_sdk::plugins::sandbox::FileOperation::Write,
-                        )
-                        .await?;
+                    if !security.validate_file_access(path, agentic_sdk::plugins::sandbox::FileOperation::Write).await? {
+                        return Err(Box::new(agentic_sdk::plugins::sandbox::SecurityError::FileAccessDenied(path.to_string())));
+                    }
                 }
             } else if tool_name == "shell_exec" {
                 if let Some(command) = params.get("command").and_then(|v| v.as_str()) {
-                    security
-                        .validate_command(command, &context.working_dir)
-                        .await?;
+                    if !security.validate_command(command, &context.working_dir).await? {
+                        return Err(Box::new(agentic_sdk::plugins::sandbox::SecurityError::CommandRejected(command.to_string())));
+                    }
+                }
+            } else if tool_name == "http" {
+                if let Some(url) = params.get("url").and_then(|v| v.as_str()) {
+                    if !security.validate_network_access(url).await? {
+                        return Err(Box::new(agentic_sdk::plugins::sandbox::SecurityError::NetworkAccessDenied(url.to_string())));
+                    }
                 }
             }
         }

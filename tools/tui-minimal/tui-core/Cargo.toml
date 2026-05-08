@@ -9,3 +9,6 @@ serde = { workspace = true }
 tokio = { workspace = true }
 tui-config = { workspace = true }
 tui-nats = { workspace = true }
+
+async-trait = "0.1"
+ratatui = { workspace = true }

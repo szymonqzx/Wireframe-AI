@@ -17,3 +17,4 @@ tui-core = { workspace = true }
 tui-input = { workspace = true }
 tui-nats = { workspace = true }
 tui-render = { workspace = true }
+async-trait = "0.1"

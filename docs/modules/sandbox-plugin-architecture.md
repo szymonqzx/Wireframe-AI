@@ -68,7 +68,7 @@ The sandbox-core uses a minimal but extensible plugin system to add tools, secur
 
 **Registration**:
 ```rust
-sandbox.register_tool(Arc::new(HttpTool::new())).await;
+sandbox.register_tool(Arc::new(HttpTool::new().expect("Failed to create HTTP tool"))).await;
 ```
 
 ### 2. Security Policy Plugins

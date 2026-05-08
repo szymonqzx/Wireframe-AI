@@ -533,25 +533,30 @@ use serde_json::Value;
 /// HTTP tool for making requests.
 pub struct HttpTool {
     timeout_seconds: u64,
+    max_body_size: usize,
+    client: reqwest::Client,
 }
 
 impl HttpTool {
-    pub fn new() -> Self {
-        Self {
-            timeout_seconds: 30,
-        }
+    pub fn new() -> Result<Self, agentic_sdk::plugin::PluginError> {
+        Self::with_timeout(30)
     }
 
-    pub fn with_timeout(timeout: u64) -> Self {
-        Self {
+    pub fn with_timeout(timeout: u64) -> Result<Self, agentic_sdk::plugin::PluginError> {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(timeout))
+            .build()
+            .map_err(|e| {
+                agentic_sdk::plugin::PluginError::InitializationFailed(format!(
+                    "Failed to create HTTP client: {}",
+                    e
+                ))
+            })?;
+        Ok(Self {
             timeout_seconds: timeout,
-        }
-    }
-}
-
-impl Default for HttpTool {
-    fn default() -> Self {
-        Self::new()
+            max_body_size: 10 * 1024 * 1024,
+            client,
+        })
     }
 }
 
@@ -571,7 +576,21 @@ impl Plugin for HttpTool {
 
     async fn initialize(&mut self, config: &Value) -> Result<(), agentic_sdk::plugin::PluginError> {
         if let Some(timeout) = config.get("timeout_seconds").and_then(|v| v.as_u64()) {
-            self.timeout_seconds = timeout;
+            if timeout != self.timeout_seconds {
+                self.timeout_seconds = timeout;
+                self.client = reqwest::Client::builder()
+                    .timeout(std::time::Duration::from_secs(timeout))
+                    .build()
+                    .map_err(|e| {
+                        agentic_sdk::plugin::PluginError::InitializationFailed(format!(
+                            "Failed to create HTTP client: {}",
+                            e
+                        ))
+                    })?;
+            }
+        }
+        if let Some(max_size) = config.get("max_body_size").and_then(|v| v.as_u64()) {
+            self.max_body_size = max_size as usize;
         }
         Ok(())
     }
@@ -607,12 +626,52 @@ impl Tool for HttpTool {
         params: Value,
         _sandbox_context: &SandboxContext,
     ) -> Result<Value, agentic_sdk::plugins::sandbox::ToolError> {
-        // Placeholder: simulate HTTP request
-        // TODO: Implement actual HTTP requests with reqwest
-        let url = params.get("url").and_then(|v| v.as_str()).unwrap_or("unknown");
+        use std::str::FromStr;
+        use futures::StreamExt;
+
+        let url = params.get("url").and_then(|v| v.as_str())
+            .ok_or(agentic_sdk::plugins::sandbox::ToolError::InvalidParameters("Missing URL".to_string()))?;
+        let method_str = params.get("method").and_then(|v| v.as_str()).unwrap_or("GET");
+        let method = reqwest::Method::from_str(method_str).map_err(|_| {
+            agentic_sdk::plugins::sandbox::ToolError::InvalidParameters(format!("Invalid HTTP method: {}", method_str))
+        })?;
+
+        let mut request_builder = self.client.request(method, url);
+
+        if let Some(headers) = params.get("headers").and_then(|v| v.as_object()) {
+            let mut header_map = reqwest::header::HeaderMap::new();
+            for (k, v) in headers {
+                if let Some(v_str) = v.as_str() {
+                    if let (Ok(name), Ok(value)) = (reqwest::header::HeaderName::from_str(k), reqwest::header::HeaderValue::from_str(v_str)) {
+                        header_map.insert(name, value);
+                    }
+                }
+            }
+            request_builder = request_builder.headers(header_map);
+        }
+
+        if let Some(body) = params.get("body").and_then(|v| v.as_str()) {
+            request_builder = request_builder.body(body.to_string());
+        }
+
+        let response = request_builder.send().await.map_err(|e| {
+            agentic_sdk::plugins::sandbox::ToolError::ExecutionFailed(format!("HTTP request failed: {}", e))
+        })?;
+
+        let status = response.status().as_u16();
+        let mut body = Vec::new();
+        let mut stream = response.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| agentic_sdk::plugins::sandbox::ToolError::ExecutionFailed(e.to_string()))?;
+            if body.len() + chunk.len() > self.max_body_size {
+                return Err(agentic_sdk::plugins::sandbox::ToolError::ExecutionFailed("Response body too large".to_string()));
+            }
+            body.extend_from_slice(&chunk);
+        }
+
         Ok(serde_json::json!({
-            "status": "simulated",
-            "url": url
+            "status": status,
+            "body": String::from_utf8_lossy(&body).to_string()
         }))
     }
 }
@@ -648,19 +707,19 @@ use agentic_sdk::plugins::sandbox::Tool;
 
 #[tokio::test]
 async fn test_tool_http_plugin_id() {
-    let tool = HttpTool::new();
+    let tool = HttpTool::new().unwrap();
     assert_eq!(tool.plugin_id(), "tool-http");
 }
 
 #[tokio::test]
 async fn test_tool_http_tool_name() {
-    let tool = HttpTool::new();
+    let tool = HttpTool::new().unwrap();
     assert_eq!(tool.tool_name(), "http");
 }
 
 #[tokio::test]
 async fn test_tool_http_input_schema() {
-    let tool = HttpTool::new();
+    let tool = HttpTool::new().unwrap();
     let schema = tool.input_schema();
     assert!(schema.is_object());
 }
