@@ -314,3 +314,90 @@ impl ConfigWatcher {
         self.watcher = None;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn test_config_watcher_new_valid_yaml() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config.yaml");
+        let yaml = r#"
+modules:
+  test:
+    enabled: true
+    plugins:
+      enrichment_pipeline: []
+      tools: []
+"#;
+        fs::write(&file_path, yaml).unwrap();
+
+        let watcher = ConfigWatcher::new(file_path).unwrap();
+        let config = watcher.get_config().await;
+        assert!(config.modules.contains_key("test"));
+    }
+
+    #[tokio::test]
+    async fn test_config_watcher_new_valid_json() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config.json");
+        let json = r#"{
+            "modules": {
+                "test": {
+                    "enabled": true,
+                    "plugins": {
+                        "enrichment_pipeline": [],
+                        "tools": []
+                    }
+                }
+            }
+        }"#;
+        fs::write(&file_path, json).unwrap();
+
+        let watcher = ConfigWatcher::new(file_path).unwrap();
+        let config = watcher.get_config().await;
+        assert!(config.modules.contains_key("test"));
+    }
+
+    #[test]
+    fn test_config_watcher_new_non_existent_file() {
+        let file_path = PathBuf::from("non_existent_file.yaml");
+        let result = ConfigWatcher::new(file_path);
+        assert!(result.is_err());
+        match result.err().unwrap() {
+            ConfigError::IoError(e) => assert!(e.contains("No such file or directory")),
+            _ => panic!("Expected IoError"),
+        }
+    }
+
+    #[test]
+    fn test_config_watcher_new_unsupported_format() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config.txt");
+        fs::write(&file_path, "some content").unwrap();
+
+        let result = ConfigWatcher::new(file_path);
+        assert!(result.is_err());
+        match result.err().unwrap() {
+            ConfigError::UnsupportedFormat(ext) => assert_eq!(ext, "txt"),
+            _ => panic!("Expected UnsupportedFormat"),
+        }
+    }
+
+    #[test]
+    fn test_config_watcher_new_invalid_content() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config.yaml");
+        fs::write(&file_path, "not a valid yaml: { [").unwrap();
+
+        let result = ConfigWatcher::new(file_path);
+        assert!(result.is_err());
+        match result.err().unwrap() {
+            ConfigError::ParseError(_) => (),
+            _ => panic!("Expected ParseError"),
+        }
+    }
+}
