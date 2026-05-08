@@ -54,6 +54,12 @@ pub struct ContextConfig {
     pub max_memory_chunks: usize,
     /// Maximum context tokens (default: 32768)
     pub max_context_tokens: usize,
+    /// Storage plugin configuration
+    pub storage_plugin: Option<PluginConfig>,
+    /// Memory plugin configuration
+    pub memory_plugin: Option<PluginConfig>,
+    /// Enrichment plugins configuration
+    pub enrichment_plugins: Vec<PluginConfig>,
 }
 
 /// Interface module configuration
@@ -63,6 +69,21 @@ pub struct InterfaceConfig {
     pub default_timeout_secs: u64,
     /// Whether to show welcome banner (default: true)
     pub show_banner: bool,
+    /// Input plugin configuration
+    pub input_plugin: Option<PluginConfig>,
+    /// Output plugin configuration
+    pub output_plugin: Option<PluginConfig>,
+}
+
+/// Plugin configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PluginConfig {
+    /// Plugin identifier
+    pub plugin_id: String,
+    /// Plugin type (storage, memory, enrichment, input, output)
+    pub plugin_type: String,
+    /// Plugin-specific configuration
+    pub config: Option<serde_json::Value>,
 }
 
 /// Configuration manager with hot reload support
@@ -163,10 +184,15 @@ impl Default for WireframeConfig {
                 max_session_history: 50,
                 max_memory_chunks: 20,
                 max_context_tokens: 32768,
+                storage_plugin: None,
+                memory_plugin: None,
+                enrichment_plugins: vec![],
             },
             interface: InterfaceConfig {
                 default_timeout_secs: 300,
                 show_banner: true,
+                input_plugin: None,
+                output_plugin: None,
             },
         }
     }

@@ -120,9 +120,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create interface core
     let core = Arc::new(InterfaceCore::new());
 
-    // TODO: Load plugins from config when plugin loading is implemented
-    // For now, we'll use default CLI input/output
-    info!("Interface-core ready (using default CLI input/output)");
+    // Load plugins from configuration, falling back to basic built-in implementations
+    if let Some(input_config) = config.interface.input_plugin.as_ref() {
+        match input_config.plugin_id.as_str() {
+            "input-cli" => {
+                let prompt = input_config.config
+                    .as_ref()
+                    .and_then(|c| c.get("prompt"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("> ");
+                let input = Arc::new(wireframe_ai_input_cli::CliInput::with_prompt(prompt.to_string()));
+                core.set_input(input).await;
+                info!("Loaded input plugin: input-cli");
+            }
+            _ => {
+                warn!("Unknown input plugin: {}, using built-in CLI input", input_config.plugin_id);
+            }
+        }
+    } else {
+        // Use built-in default CLI input as fallback
+        info!("No input plugin configured, using built-in CLI input");
+    }
+
+    if let Some(output_config) = config.interface.output_plugin.as_ref() {
+        match output_config.plugin_id.as_str() {
+            "output-markdown" => {
+                let syntax_highlighting = output_config.config
+                    .as_ref()
+                    .and_then(|c| c.get("syntax_highlighting"))
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let output = Arc::new(wireframe_ai_output_markdown::MarkdownOutput::with_syntax_highlighting(syntax_highlighting));
+                core.set_output(output).await;
+                info!("Loaded output plugin: output-markdown");
+            }
+            _ => {
+                warn!("Unknown output plugin: {}, using built-in plain output", output_config.plugin_id);
+            }
+        }
+    } else {
+        // Use built-in default plain output as fallback
+        info!("No output plugin configured, using built-in plain output");
+    }
+
+    info!("Interface-core ready");
 
     // Connect to NATS
     let client = async_nats::connect(&nats_url).await?;
