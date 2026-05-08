@@ -15,11 +15,13 @@ jobs:
 
     services:
       nats:
-        image: nats:alpine
+        image: nats:latest
+        command: ["-m", "8222"]
         ports:
           - 4222:4222
+          - 8222:8222
         options: >-
-          --health-cmd "nc -z localhost 4222 || exit 1"
+          --health-cmd "wget -qO- http://localhost:8222/healthz"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
