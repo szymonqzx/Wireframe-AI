@@ -459,3 +459,134 @@ impl EnvelopePublisher {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+    use tokio::time::sleep;
+
+    // A mock struct so we don't have to connect to a real NATS server
+    // We can't easily mock async_nats::Client without introducing a trait wrapper in production code.
+    // However, wait: we CAN just create a fake MessageBuffer because its fields are private and we only test its public interface.
+    // BUT we need an Arc<Client>. Connecting to a fake local TCP server is one way to get an async_nats::Client!
+
+    // Let's spawn a dummy TCP server that accepts the connection and reads/writes enough NATS protocol to let async_nats::Client connect.
+    async fn setup_mock_nats() -> (Arc<Client>, tokio::task::JoinHandle<()>) {
+        use tokio::net::TcpListener;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let handle = tokio::spawn(async move {
+            if let Ok((mut socket, _)) = listener.accept().await {
+                // Send INFO protocol
+                let info = b"INFO {\"server_id\":\"test\",\"version\":\"2.9.15\",\"proto\":1,\"host\":\"127.0.0.1\",\"port\":4222,\"headers\":true,\"max_payload\":1048576,\"client_id\":1}\r\n";
+                let _ = socket.write_all(info).await;
+
+                let mut buf = [0u8; 1024];
+                // Read CONNECT and PING
+                if let Ok(_) = socket.read(&mut buf).await {
+                    let _ = socket.write_all(b"PONG\r\n").await;
+                }
+
+                // Just keep reading and answering PINGs and discarding messages to keep the connection alive
+                loop {
+                    if socket.read(&mut buf).await.unwrap_or(0) == 0 {
+                        break;
+                    }
+                    // Very naive PING handler
+                    if buf.starts_with(b"PING") {
+                        let _ = socket.write_all(b"PONG\r\n").await;
+                    }
+                }
+            }
+        });
+
+        let url = format!("nats://{}", addr);
+        let client = async_nats::connect(&url).await.expect("Failed to connect to mock NATS");
+
+        (Arc::new(client), handle)
+    }
+
+    #[tokio::test]
+    async fn test_message_buffer_new() {
+        let (nc, _server) = setup_mock_nats().await;
+        let buffer = MessageBuffer::new(nc, 10, Duration::from_secs(1));
+
+        // Since max_size is private, we can't assert it directly.
+        // We can only assert through public methods.
+        assert!(buffer.is_empty().await);
+        assert_eq!(buffer.size().await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_message_buffer_publish_no_flush() {
+        let (nc, _server) = setup_mock_nats().await;
+        let buffer = MessageBuffer::new(nc, 10, Duration::from_secs(10));
+
+        buffer.publish("test.subject".to_string(), vec![1, 2, 3]).await;
+
+        assert!(!buffer.is_empty().await);
+        assert_eq!(buffer.size().await, 1);
+    }
+
+    #[tokio::test]
+    async fn test_message_buffer_publish_with_flush() {
+        let (nc, _server) = setup_mock_nats().await;
+        let buffer = MessageBuffer::new(nc, 2, Duration::from_secs(10));
+
+        // First publish should be buffered
+        buffer.publish("test.subject.1".to_string(), vec![1]).await;
+        assert_eq!(buffer.size().await, 1);
+
+        // Second publish should reach max_size and trigger a flush
+        buffer.publish("test.subject.2".to_string(), vec![2]).await;
+
+        // Buffer should be empty immediately as messages are taken
+        assert!(buffer.is_empty().await);
+        assert_eq!(buffer.size().await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_message_buffer_manual_flush() {
+        let (nc, _server) = setup_mock_nats().await;
+        let buffer = MessageBuffer::new(nc, 10, Duration::from_secs(10));
+
+        buffer.publish("test.subject".to_string(), vec![1]).await;
+        assert_eq!(buffer.size().await, 1);
+
+        buffer.flush().await;
+
+        assert!(buffer.is_empty().await);
+        assert_eq!(buffer.size().await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_message_buffer_auto_flush() {
+        let (nc, _server) = setup_mock_nats().await;
+        let flush_interval = Duration::from_millis(50);
+        let buffer = MessageBuffer::new(nc, 10, flush_interval);
+
+        buffer.publish("test.subject".to_string(), vec![1]).await;
+        assert_eq!(buffer.size().await, 1);
+
+        // Wait longer than max_age
+        sleep(Duration::from_millis(150)).await;
+
+        assert!(buffer.is_empty().await);
+        assert_eq!(buffer.size().await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_message_buffer_drop() {
+        let (nc, _server) = setup_mock_nats().await;
+        let buffer = MessageBuffer::new(nc, 10, Duration::from_secs(10));
+        buffer.publish("test.subject".to_string(), vec![1]).await;
+
+        // Verifying that it doesn't panic when dropped
+        drop(buffer);
+    }
+}
