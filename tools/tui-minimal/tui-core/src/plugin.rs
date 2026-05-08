@@ -3,7 +3,13 @@
 //! Provides a trait-based plugin architecture for extending the TUI with
 //! custom event handlers and UI overlays.
 
+//! Plugin system for the TUI
+//!
+//! Provides a trait-based plugin architecture for extending the TUI with
+//! custom event handlers and UI overlays.
+
 use anyhow::Result;
+
 
 
 pub struct RenderContext<'a, 'b> {
