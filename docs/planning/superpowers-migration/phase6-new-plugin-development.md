@@ -648,19 +648,19 @@ use agentic_sdk::plugins::sandbox::Tool;
 
 #[tokio::test]
 async fn test_tool_http_plugin_id() {
-    let tool = HttpTool::new();
+    let tool = HttpTool::new().unwrap();
     assert_eq!(tool.plugin_id(), "tool-http");
 }
 
 #[tokio::test]
 async fn test_tool_http_tool_name() {
-    let tool = HttpTool::new();
+    let tool = HttpTool::new().unwrap();
     assert_eq!(tool.tool_name(), "http");
 }
 
 #[tokio::test]
 async fn test_tool_http_input_schema() {
-    let tool = HttpTool::new();
+    let tool = HttpTool::new().unwrap();
     let schema = tool.input_schema();
     assert!(schema.is_object());
 }
