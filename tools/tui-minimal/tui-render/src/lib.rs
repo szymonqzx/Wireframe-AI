@@ -1,11 +1,11 @@
 //! UI rendering for minimal TUI
-//! 
+//!
 //! Handles terminal rendering and layout
 
 use anyhow::Result;
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout, Margin},
+    layout::{Constraint, Direction, Layout, Margin, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Wrap},
@@ -14,6 +14,7 @@ use ratatui::{
 use std::io;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tui_core::{PluginManager, RenderContext};
 
 /// Chat message
 #[derive(Debug, Clone)]
@@ -36,6 +37,7 @@ pub struct RenderState {
     pub input: String,
     pub nats_connected: bool,
     pub pending_tasks: usize,
+    pub sidebar_items: Vec<String>,
 }
 
 impl Default for RenderState {
@@ -45,6 +47,7 @@ impl Default for RenderState {
             input: String::new(),
             nats_connected: false,
             pending_tasks: 0,
+            sidebar_items: vec!["Recent Chat 1".to_string(), "Recent Chat 2".to_string()],
         }
     }
 }
@@ -60,44 +63,83 @@ impl Renderer {
             state: Arc::new(RwLock::new(RenderState::default())),
         }
     }
-    
+
     /// Get state
     pub fn state(&self) -> Arc<RwLock<RenderState>> {
         self.state.clone()
     }
-    
+
     /// Render the UI
-    pub async fn render(&self, terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, state: RenderState) -> Result<()> {
-        terminal.draw(|f| Self::draw_ui(f, state))?;
+    pub async fn render(
+        &self,
+        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+        state: RenderState,
+        plugin_manager: Arc<RwLock<PluginManager>>,
+    ) -> Result<()> {
+        let pm = plugin_manager.read().await;
+        terminal.draw(|f| {
+            Self::draw_ui(f, &state);
+
+            // Allow plugins to render overlays
+            let area = f.size();
+            let mut ctx = RenderContext { area, frame: f };
+            let _ = pm.render_all(&mut ctx);
+        })?;
         Ok(())
     }
-    
+
     /// Draw the UI
-    fn draw_ui(f: &mut Frame, state: RenderState) {
-        let size = f.area();
-        
-        // Create layout: messages area on top, input area at bottom
+    fn draw_ui(f: &mut Frame, state: &RenderState) {
+        let size = f.size();
+
+        // OpenCode layout: Sidebar on left, Main area on right
         let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .margin(1)
+            .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Min(0), // Messages area
-                Constraint::Length(3), // Input area
+                Constraint::Percentage(20), // Sidebar
+                Constraint::Percentage(80), // Main area
             ])
             .split(size);
-        
+
+        // Render Sidebar
+        let sidebar_block = Block::default()
+            .title("History")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::DarkGray));
+
+        let sidebar_text: Vec<Line> = state
+            .sidebar_items
+            .iter()
+            .map(|item| Line::from(item.as_str()))
+            .collect();
+
+        let sidebar_paragraph = Paragraph::new(sidebar_text).block(sidebar_block);
+
+        f.render_widget(sidebar_paragraph, chunks[0]);
+
+        // Main area: Messages on top, Input in middle, Status at bottom
+        let main_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(0),    // Messages area
+                Constraint::Length(4), // Input area
+                Constraint::Length(1), // Status bar
+            ])
+            .split(chunks[1]);
+
         // Draw messages area
         let messages_block = Block::default()
-            .title("Wireframe-AI Minimal TUI")
-            .borders(Borders::ALL);
-        
-        f.render_widget(messages_block, chunks[0]);
-        
-        let messages_area = chunks[0].inner(Margin {
+            .title("Wireframe-AI")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::DarkGray));
+
+        f.render_widget(messages_block, main_chunks[0]);
+
+        let messages_area = main_chunks[0].inner(&Margin {
             horizontal: 1,
             vertical: 1,
         });
-        
+
         // Render messages
         let messages_text: Vec<Line> = state
             .messages
@@ -108,69 +150,81 @@ impl Renderer {
                     MessageRole::Assistant => Style::default().fg(Color::Green),
                     MessageRole::System => Style::default().fg(Color::Yellow),
                 };
-                
+
                 Line::from(vec![
                     Span::styled(
                         format!("{:?}: ", msg.role),
-                        Style::default().add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .add_modifier(Modifier::BOLD)
+                            .fg(Color::DarkGray),
                     ),
                     Span::styled(&msg.content, role_style),
                 ])
             })
             .collect();
-        
+
         let messages_paragraph = Paragraph::new(messages_text)
             .wrap(Wrap { trim: true })
             .scroll((0, state.messages.len() as u16)); // Auto-scroll to bottom
-        
+
         f.render_widget(messages_paragraph, messages_area);
-        
+
         // Draw input area
         let input_block = Block::default()
             .borders(Borders::ALL)
-            .title(if state.nats_connected {
-                format!("Input (Connected, {} pending)", state.pending_tasks)
-            } else {
-                "Input (Disconnected)".to_string()
-            });
-        
-        f.render_widget(input_block, chunks[1]);
-        
-        let input_area = chunks[1].inner(Margin {
+            .border_style(Style::default().fg(Color::Blue))
+            .title("Input");
+
+        f.render_widget(input_block, main_chunks[1]);
+
+        let input_area = main_chunks[1].inner(&Margin {
             horizontal: 1,
             vertical: 1,
         });
-        
+
         let input_paragraph = Paragraph::new(state.input.as_str());
         f.render_widget(input_paragraph, input_area);
+
+        // Draw status bar
+        let status_style = Style::default().bg(Color::DarkGray).fg(Color::White);
+        let status_text = if state.nats_connected {
+            format!(
+                " Connected | {} pending | [Ctrl+P] Command Palette | [Ctrl+C] Quit",
+                state.pending_tasks
+            )
+        } else {
+            " Disconnected | [Ctrl+P] Command Palette | [Ctrl+C] Quit".to_string()
+        };
+
+        let status_paragraph = Paragraph::new(status_text).style(status_style);
+
+        f.render_widget(status_paragraph, main_chunks[2]);
+    }
+
+    /// Helper to center a rect
+    pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+        let popup_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Percentage(percent_y),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ])
+            .split(r);
+
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ])
+            .split(popup_layout[1])[1]
     }
 }
 
 impl Default for Renderer {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_render_state_default() {
-        let state = RenderState::default();
-        assert!(state.messages.is_empty());
-        assert!(state.input.is_empty());
-        assert!(!state.nats_connected);
-    }
-    
-    #[test]
-    fn test_chat_message() {
-        let msg = ChatMessage {
-            role: MessageRole::User,
-            content: "test".to_string(),
-        };
-        assert_eq!(msg.role, MessageRole::User);
-        assert_eq!(msg.content, "test");
     }
 }

@@ -1,18 +1,23 @@
 //! Core application logic for minimal TUI
-//! 
+//!
 //! Coordinates between configuration, NATS, and rendering
+
+pub mod plugin;
 
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tui_config::TuiConfig;
-use tui_nats::{TuiNatsManager, TaskComplete};
+use tui_nats::{TaskComplete, TuiNatsManager};
+
+pub use plugin::{Plugin, PluginEvent, PluginManager, RenderContext};
 
 /// Application state
 #[derive(Debug)]
 pub struct AppState {
     pub config: TuiConfig,
     pub nats_manager: Arc<TuiNatsManager>,
+    // In a real app we might put shared state here
 }
 
 impl AppState {
@@ -22,22 +27,22 @@ impl AppState {
             nats_manager: Arc::new(TuiNatsManager::new()),
         }
     }
-    
+
     /// Connect to NATS
     pub async fn connect_nats(&self) -> Result<()> {
         self.nats_manager.connect(&self.config.nats_url).await
     }
-    
+
     /// Check if NATS is connected
     pub fn is_nats_connected(&self) -> bool {
         self.nats_manager.is_connected()
     }
-    
+
     /// Submit a task to NATS
     pub async fn submit_task(&self, user_input: &str) -> Result<String> {
         self.nats_manager.submit_task(user_input).await
     }
-    
+
     /// Handle task completion
     pub async fn handle_task_complete(&self, complete: TaskComplete) {
         // In a real implementation, this would update the UI state
@@ -49,27 +54,33 @@ impl AppState {
 /// Application
 pub struct Application {
     state: Arc<RwLock<AppState>>,
+    plugin_manager: Arc<RwLock<PluginManager>>,
 }
 
 impl Application {
     pub fn new(config: TuiConfig) -> Self {
         Self {
             state: Arc::new(RwLock::new(AppState::new(config))),
+            plugin_manager: Arc::new(RwLock::new(PluginManager::new())),
         }
     }
-    
+
     /// Get state
     pub fn state(&self) -> Arc<RwLock<AppState>> {
         self.state.clone()
     }
-    
+
+    pub fn plugin_manager(&self) -> Arc<RwLock<PluginManager>> {
+        self.plugin_manager.clone()
+    }
+
     /// Initialize application
     pub async fn initialize(&self) -> Result<()> {
         let state = self.state.read().await;
         state.connect_nats().await?;
         Ok(())
     }
-    
+
     /// Shutdown application
     pub async fn shutdown(&self) -> Result<()> {
         // Cleanup logic here
@@ -80,14 +91,14 @@ impl Application {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_app_state_creation() {
         let config = TuiConfig::default();
         let state = AppState::new(config);
         assert!(!state.is_nats_connected());
     }
-    
+
     #[tokio::test]
     async fn test_application_creation() {
         let config = TuiConfig::default();
