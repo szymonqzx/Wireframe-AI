@@ -325,7 +325,6 @@ impl MessageBuffer {
         }
 
         let messages = std::mem::take(buffer);
-        let _ = buffer; // Release lock before publishing
 
         let nc_clone = nc.clone();
         let pool_clone = pool.clone();
