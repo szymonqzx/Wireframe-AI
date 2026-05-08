@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
 
     // Create input handler and buffer
     let mut input_handler = InputHandler::new();
-    let mut event_receiver = input_handler.take_receiver().ok_or_else(|| anyhow::anyhow!("event receiver already taken"))?;
+    let mut event_receiver = input_handler.take_receiver().unwrap();
     let input_buffer = Arc::new(tokio::sync::Mutex::new(InputBuffer::new()));
 
     // Spawn input handler in background
@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
     let app_state_clone = app.state();
 
     // Main event loop
-    loop {
+    'mainloop: loop {
         // Update render state
         let nats_manager = app_state_clone.read().await.nats_manager.clone();
         let nats_connected = nats_manager.is_connected();
@@ -82,10 +82,10 @@ async fn main() -> Result<()> {
             .render(&mut terminal, render_state, app.plugin_manager())
             .await?;
 
-        // Check for input events
-        if let Ok(event) = event_receiver.try_recv() {
+        // Process all pending input events
+        while let Ok(event) = event_receiver.try_recv() {
             if event.is_quit() {
-                break;
+                break 'mainloop;
             }
 
             if let InputEvent::Plugin(ref pe) = event {

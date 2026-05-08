@@ -81,16 +81,20 @@ impl Renderer {
             Self::draw_ui(f, &state);
 
             // Allow plugins to render overlays
-            let area = f.size();
+            let area = f.area();
             let mut ctx = RenderContext { area, frame: f };
-            let _ = pm.render_all(&mut ctx);
+            if let Err(e) = pm.render_all(&mut ctx) {
+                // We silently ignore errors in the render loop for now to avoid panics
+                // but we should log them in the future
+                let _ = e;
+            }
         })?;
         Ok(())
     }
 
     /// Draw the UI
     fn draw_ui(f: &mut Frame, state: &RenderState) {
-        let size = f.size();
+        let size = f.area();
 
         // OpenCode layout: Sidebar on left, Main area on right
         let chunks = Layout::default()
@@ -135,7 +139,7 @@ impl Renderer {
 
         f.render_widget(messages_block, main_chunks[0]);
 
-        let messages_area = main_chunks[0].inner(&Margin {
+        let messages_area = main_chunks[0].inner(Margin {
             horizontal: 1,
             vertical: 1,
         });
@@ -177,7 +181,7 @@ impl Renderer {
 
         f.render_widget(input_block, main_chunks[1]);
 
-        let input_area = main_chunks[1].inner(&Margin {
+        let input_area = main_chunks[1].inner(Margin {
             horizontal: 1,
             vertical: 1,
         });
@@ -226,5 +230,28 @@ impl Renderer {
 impl Default for Renderer {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_render_state_default() {
+        let state = RenderState::default();
+        assert!(state.messages.is_empty());
+        assert!(state.input.is_empty());
+        assert!(!state.nats_connected);
+    }
+
+    #[test]
+    fn test_chat_message() {
+        let msg = ChatMessage {
+            role: MessageRole::User,
+            content: "test".to_string(),
+        };
+        assert_eq!(msg.role, MessageRole::User);
+        assert_eq!(msg.content, "test");
     }
 }

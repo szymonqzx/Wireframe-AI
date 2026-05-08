@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = { workspace = true }
-crossterm = "0.27"
-ratatui = "0.26"
+crossterm = { workspace = true }
+ratatui = { workspace = true }
 tokio = { workspace = true }
 tui-core = { workspace = true }

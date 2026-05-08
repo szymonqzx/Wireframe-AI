@@ -147,3 +147,45 @@ impl InputBuffer {
         self.buffer.len()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_input_buffer() {
+        let mut buffer = InputBuffer::new();
+        assert!(buffer.is_empty());
+
+        buffer.push_char('a');
+        buffer.push_char('b');
+        assert_eq!(buffer.as_str(), "ab");
+        assert_eq!(buffer.len(), 2);
+
+        buffer.pop_char();
+        assert_eq!(buffer.as_str(), "a");
+
+        buffer.clear();
+        assert!(buffer.is_empty());
+    }
+
+    #[test]
+    fn test_key_mapping() {
+        let handler = InputHandler::new();
+
+        // Test character
+        let key = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::empty());
+        let event = handler.map_key_event(key);
+        assert_eq!(event, InputEvent::Plugin(PluginEvent::Input('a')));
+
+        // Test Ctrl+C
+        let key = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
+        let event = handler.map_key_event(key);
+        assert_eq!(event, InputEvent::CtrlC);
+
+        // Test Enter
+        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::empty());
+        let event = handler.map_key_event(key);
+        assert_eq!(event, InputEvent::Plugin(PluginEvent::Enter));
+    }
+}
