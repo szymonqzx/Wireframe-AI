@@ -1979,14 +1979,12 @@ fn handle_module_start(name: &str, build_mode: &str, nats_url: &str) -> anyhow::
     println!("Build mode: {}", build_mode);
     println!("NATS URL: {}", nats_url);
 
-    let build_flag = if build_mode == "release" {
-        "--release"
-    } else {
-        ""
-    };
-
     let mut cmd = Command::new("cargo");
-    cmd.arg("run").arg(build_flag).arg("-p").arg(name);
+    cmd.arg("run");
+    if build_mode == "release" {
+        cmd.arg("--release");
+    }
+    cmd.arg("-p").arg(name);
 
     if let Err(e) = cmd.spawn() {
         return Err(anyhow::anyhow!("Failed to start module {}: {}", name, e));
@@ -2022,11 +2020,12 @@ fn handle_module_stop(name: &str, force: bool) -> anyhow::Result<()> {
     #[cfg(windows)]
     {
         use std::process::Command;
-        let output = Command::new("taskkill")
-            .arg(if force { "/F" } else { "" })
-            .arg("/IM")
-            .arg(&format!("{}.exe", process_name))
-            .output()?;
+        let mut cmd = Command::new("taskkill");
+        if force {
+            cmd.arg("/F");
+        }
+        cmd.arg("/IM").arg(&format!("{}.exe", process_name));
+        let output = cmd.output()?;
 
         if output.status.success() {
             println!("Module {} stopped ({})", name, signal);
