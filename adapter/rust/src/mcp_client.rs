@@ -24,9 +24,10 @@ impl McpStdioClient {
             .map(|p| p.to_path_buf())
             .or_else(|| {
                 // Try to find the sandbox binary in the same directory as current exe
-                std::env::current_exe()
-                    .ok()
-                    .and_then(|exe| exe.parent().map(|dir| dir.join("wireframe-ai-sandbox-core")))
+                std::env::current_exe().ok().and_then(|exe| {
+                    exe.parent()
+                        .map(|dir| dir.join("wireframe-ai-sandbox-core"))
+                })
             })
             .unwrap_or_else(|| PathBuf::from("wireframe-ai-sandbox-core"));
 

@@ -15,7 +15,7 @@ jobs:
 
     services:
       nats:
-        image: nats:latest
+        image: nats:alpine
         ports:
           - 4222:4222
         options: >-

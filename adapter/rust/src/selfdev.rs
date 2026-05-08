@@ -189,10 +189,8 @@ pub async fn compile_adapter(source_root: &Path) -> Result<serde_json::Value> {
                 "exit_code": output.status.code().unwrap_or(-1)
             }))
         }
-        Err(e) => {
-            Ok(serde_json::json!({
-                "error": format!("Compilation failed: {}", e)
-            }))
-        }
+        Err(e) => Ok(serde_json::json!({
+            "error": format!("Compilation failed: {}", e)
+        })),
     }
 }

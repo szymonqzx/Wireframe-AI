@@ -5,11 +5,11 @@
 //! zero-copy deserialization where possible.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::io::Write;
 use std::sync::Arc;
-use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use std::hash::Hash;
 
 /// Serialize a value to JSON with optimized settings.
 /// Uses compact serialization to reduce size and improve speed.
@@ -90,7 +90,10 @@ impl JsonSerializer {
     /// Serialize a value and return the bytes as a Vec (owned).
     /// Useful when the buffer needs to be kept.
     #[inline]
-    pub fn serialize_to_vec<T: Serialize>(&mut self, value: &T) -> Result<Vec<u8>, serde_json::Error> {
+    pub fn serialize_to_vec<T: Serialize>(
+        &mut self,
+        value: &T,
+    ) -> Result<Vec<u8>, serde_json::Error> {
         self.buffer.clear();
         serde_json::to_writer(&mut self.buffer, value)?;
         Ok(self.buffer.clone())
@@ -156,19 +159,28 @@ impl JsonDeserializer {
 
     /// Deserialize from bytes with zero-copy when possible.
     #[inline]
-    pub fn deserialize<'a, T: Deserialize<'a>>(&self, bytes: &'a [u8]) -> Result<T, serde_json::Error> {
+    pub fn deserialize<'a, T: Deserialize<'a>>(
+        &self,
+        bytes: &'a [u8],
+    ) -> Result<T, serde_json::Error> {
         serde_json::from_slice(bytes)
     }
 
     /// Deserialize from string.
     #[inline]
-    pub fn deserialize_str<'a, T: Deserialize<'a>>(&self, s: &'a str) -> Result<T, serde_json::Error> {
+    pub fn deserialize_str<'a, T: Deserialize<'a>>(
+        &self,
+        s: &'a str,
+    ) -> Result<T, serde_json::Error> {
         serde_json::from_str(s)
     }
 
     /// Deserialize from bytes using scratch space for temporary storage.
     /// Useful for deserializing into types that require owned data.
-    pub fn deserialize_owned<T: for<'de> Deserialize<'de>>(&mut self, bytes: &[u8]) -> Result<T, serde_json::Error> {
+    pub fn deserialize_owned<T: for<'de> Deserialize<'de>>(
+        &mut self,
+        bytes: &[u8],
+    ) -> Result<T, serde_json::Error> {
         self.scratch.clear();
         self.scratch.extend_from_slice(bytes);
         serde_json::from_slice(&self.scratch)
@@ -261,13 +273,13 @@ mod tests {
     #[test]
     fn test_json_serializer_reuse() {
         let mut serializer = JsonSerializer::new();
-        
+
         let value1 = json!({"key1": "value1"});
         let len1 = serializer.serialize(&value1).unwrap().len();
-        
+
         let value2 = json!({"key2": "value2"});
         let len2 = serializer.serialize(&value2).unwrap().len();
-        
+
         assert!(len1 > 0);
         assert!(len2 > 0);
         // Buffer is reused
@@ -291,11 +303,11 @@ mod tests {
     #[test]
     fn test_json_deserializer() {
         let deserializer = JsonDeserializer::new();
-        
+
         let bytes = br#"{"key": "value"}"#;
         let parsed: serde_json::Value = deserializer.deserialize(bytes).unwrap();
         assert_eq!(parsed["key"], "value");
-        
+
         let json_str = r#"{"key": "value"}"#;
         let parsed2: serde_json::Value = deserializer.deserialize_str(json_str).unwrap();
         assert_eq!(parsed2["key"], "value");
@@ -356,7 +368,11 @@ where
 
     /// Get cached serialization or serialize and cache.
     #[inline]
-    pub fn get_or_serialize(&mut self, key: String, value: &T) -> Result<Vec<u8>, serde_json::Error> {
+    pub fn get_or_serialize(
+        &mut self,
+        key: String,
+        value: &T,
+    ) -> Result<Vec<u8>, serde_json::Error> {
         // Check cache
         if let Some((cached, timestamp)) = self.cache.get(&key) {
             if timestamp.elapsed() < self.ttl {
@@ -372,7 +388,8 @@ where
             self.evict_expired();
             if self.cache.len() >= self.max_size {
                 // Remove oldest entry
-                if let Some(oldest_key) = self.cache
+                if let Some(oldest_key) = self
+                    .cache
                     .iter()
                     .min_by_key(|(_, (_, time))| time)
                     .map(|(k, _)| k.clone())
@@ -390,7 +407,8 @@ where
     #[inline]
     fn evict_expired(&mut self) {
         let now = Instant::now();
-        self.cache.retain(|_, (_, timestamp)| now.duration_since(*timestamp) < self.ttl);
+        self.cache
+            .retain(|_, (_, timestamp)| now.duration_since(*timestamp) < self.ttl);
     }
 
     /// Clear the cache.
@@ -403,7 +421,8 @@ where
     #[inline]
     pub fn stats(&self) -> CacheStats {
         let now = Instant::now();
-        let expired_count = self.cache
+        let expired_count = self
+            .cache
             .values()
             .filter(|(_, timestamp)| now.duration_since(*timestamp) >= self.ttl)
             .count();
@@ -450,7 +469,10 @@ impl BatchSerializer {
 
     /// Serialize multiple values efficiently.
     #[inline]
-    pub fn serialize_batch<T: Serialize>(&mut self, values: &[T]) -> Result<Vec<Vec<u8>>, serde_json::Error> {
+    pub fn serialize_batch<T: Serialize>(
+        &mut self,
+        values: &[T],
+    ) -> Result<Vec<Vec<u8>>, serde_json::Error> {
         let mut results = Vec::with_capacity(values.len());
         for value in values {
             let bytes = self.serializer.serialize_to_vec(value)?;

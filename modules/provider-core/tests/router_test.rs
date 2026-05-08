@@ -1,7 +1,7 @@
-use wireframe_provider_core::{router::ProviderRouter, discovery::ProviderDiscoveryRegistry};
-use wireframe_provider_core::{Provider, ProviderStatus, Availability, SetupState};
-use std::sync::Arc;
 use async_trait::async_trait;
+use std::sync::Arc;
+use wireframe_provider_core::{discovery::ProviderDiscoveryRegistry, router::ProviderRouter};
+use wireframe_provider_core::{Availability, Provider, ProviderStatus, SetupState};
 
 struct MockProvider {
     name: String,
@@ -38,35 +38,62 @@ impl Provider for MockProvider {
 
     fn status(&self) -> ProviderStatus {
         ProviderStatus {
-            availability: if self.available { Availability::Ready } else { Availability::Unavailable },
+            availability: if self.available {
+                Availability::Ready
+            } else {
+                Availability::Unavailable
+            },
             setup_state: SetupState::Complete,
             requires_manual_setup: false,
             diagnostics: vec![],
         }
     }
 
-    fn name(&self) -> &str { &self.name }
-    fn model(&self) -> String { "test".to_string() }
-    fn set_model(&self, _model: &str) -> anyhow::Result<()> { Ok(()) }
-    fn available_models(&self) -> Vec<String> { vec![] }
-    fn supports_streaming(&self) -> bool { true }
-    fn cost_per_1k_tokens(&self) -> Option<(u64, u64)> { Some((10, 20)) }
-    fn fork(&self) -> Arc<dyn Provider> { unimplemented!() }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn model(&self) -> String {
+        "test".to_string()
+    }
+    fn set_model(&self, _model: &str) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn available_models(&self) -> Vec<String> {
+        vec![]
+    }
+    fn supports_streaming(&self) -> bool {
+        true
+    }
+    fn cost_per_1k_tokens(&self) -> Option<(u64, u64)> {
+        Some((10, 20))
+    }
+    fn fork(&self) -> Arc<dyn Provider> {
+        unimplemented!()
+    }
 }
 
 #[test]
 fn test_router_selects_available_provider() {
     let mut registry = ProviderDiscoveryRegistry::new();
-    registry.register("provider1", Arc::new(MockProvider {
-        name: "provider1".to_string(),
-        available: true,
-    }));
-    registry.register("provider2", Arc::new(MockProvider {
-        name: "provider2".to_string(),
-        available: false,
-    }));
+    registry.register(
+        "provider1",
+        Arc::new(MockProvider {
+            name: "provider1".to_string(),
+            available: true,
+        }),
+    );
+    registry.register(
+        "provider2",
+        Arc::new(MockProvider {
+            name: "provider2".to_string(),
+            available: false,
+        }),
+    );
 
-    let router = ProviderRouter::new(Arc::new(registry), vec!["provider1".to_string(), "provider2".to_string()]);
+    let router = ProviderRouter::new(
+        Arc::new(registry),
+        vec!["provider1".to_string(), "provider2".to_string()],
+    );
     let selected = router.select_provider(&[]).unwrap();
     assert_eq!(selected, "provider1");
 }
@@ -74,16 +101,25 @@ fn test_router_selects_available_provider() {
 #[test]
 fn test_router_fallback_on_unavailable() {
     let mut registry = ProviderDiscoveryRegistry::new();
-    registry.register("provider1", Arc::new(MockProvider {
-        name: "provider1".to_string(),
-        available: false,
-    }));
-    registry.register("provider2", Arc::new(MockProvider {
-        name: "provider2".to_string(),
-        available: true,
-    }));
+    registry.register(
+        "provider1",
+        Arc::new(MockProvider {
+            name: "provider1".to_string(),
+            available: false,
+        }),
+    );
+    registry.register(
+        "provider2",
+        Arc::new(MockProvider {
+            name: "provider2".to_string(),
+            available: true,
+        }),
+    );
 
-    let router = ProviderRouter::new(Arc::new(registry), vec!["provider1".to_string(), "provider2".to_string()]);
+    let router = ProviderRouter::new(
+        Arc::new(registry),
+        vec!["provider1".to_string(), "provider2".to_string()],
+    );
     let selected = router.select_provider(&[]).unwrap();
     assert_eq!(selected, "provider2");
 }

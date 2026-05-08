@@ -7,9 +7,8 @@ use async_trait::async_trait;
 use futures::{stream, StreamExt};
 use std::sync::Arc;
 use wireframe_provider_core::{
-    Availability, Diagnostic, EventStream, Message, Provider, ProviderCapabilities,
-    ProviderMetadata, ProviderStatus, SetupState, StreamEvent,
-    get_http_client,
+    get_http_client, Availability, Diagnostic, EventStream, Message, Provider,
+    ProviderCapabilities, ProviderMetadata, ProviderStatus, SetupState, StreamEvent,
 };
 
 /// OpenAI provider configuration.
@@ -29,9 +28,7 @@ pub struct OpenAIProvider {
 
 impl OpenAIProvider {
     pub fn new(config: OpenAIConfig) -> Self {
-        Self {
-            config,
-        }
+        Self { config }
     }
 
     fn base_url(&self) -> String {
@@ -40,36 +37,37 @@ impl OpenAIProvider {
             .clone()
             .unwrap_or_else(|| "https://api.openai.com/v1".to_string())
     }
-    
+
     /// Parse OpenAI SSE line.
     fn parse_sse_line(&self, line: &str) -> Option<StreamEvent> {
         let line = line.trim();
         if line.is_empty() || line.starts_with(':') {
             return None;
         }
-        
+
         let data = line.strip_prefix("data: ")?;
-        
+
         if data == "[DONE]" {
             return Some(StreamEvent::Done);
         }
-        
+
         let json: serde_json::Value = serde_json::from_str(data).ok()?;
-        
+
         // Extract text delta
         if let Some(content) = json["choices"][0]["delta"]["content"].as_str() {
             if !content.is_empty() {
-                return Some(StreamEvent::TextDelta { text: content.to_string() });
+                return Some(StreamEvent::TextDelta {
+                    text: content.to_string(),
+                });
             }
         }
-        
+
         // Extract tool calls
         if let Some(calls) = json["choices"][0]["delta"]["tool_calls"].as_array() {
             for call in calls {
-                if let (Some(id), Some(name)) = (
-                    call["id"].as_str(),
-                    call["function"]["name"].as_str()
-                ) {
+                if let (Some(id), Some(name)) =
+                    (call["id"].as_str(), call["function"]["name"].as_str())
+                {
                     let args = call["function"]["arguments"].as_str().unwrap_or("");
                     return Some(StreamEvent::ToolCall {
                         id: id.to_string(),
@@ -79,7 +77,7 @@ impl OpenAIProvider {
                 }
             }
         }
-        
+
         None
     }
 }
@@ -94,7 +92,7 @@ impl Provider for OpenAIProvider {
         _session_id: Option<&str>,
     ) -> Result<EventStream> {
         let use_streaming = self.config.stream.unwrap_or(true);
-        
+
         // Build request
         let mut request_messages = Vec::new();
 
@@ -149,13 +147,13 @@ impl Provider for OpenAIProvider {
             // For streaming, we need to read the response body as bytes and parse SSE
             let body_bytes = response.bytes().await?;
             let text = String::from_utf8_lossy(&body_bytes);
-            
+
             // Parse SSE lines and create a stream
             let events: Vec<StreamEvent> = text
                 .lines()
                 .filter_map(|line| self.parse_sse_line(line))
                 .collect();
-            
+
             let stream = stream::iter(events).map(|event| Ok(event));
             Ok(Box::pin(stream) as EventStream)
         } else {
@@ -190,7 +188,8 @@ impl Provider for OpenAIProvider {
             // Create stream
             if tool_calls.is_empty() {
                 // Only text response
-                let stream = stream::once(async move { Ok(StreamEvent::TextDelta { text: content }) });
+                let stream =
+                    stream::once(async move { Ok(StreamEvent::TextDelta { text: content }) });
                 Ok(Box::pin(stream) as EventStream)
             } else {
                 // Text + tool calls
