@@ -92,10 +92,10 @@ impl Plugin for EnvEnrichmentPlugin {
 
 #[async_trait]
 impl EnrichmentStrategy for EnvEnrichmentPlugin {
-    async fn enrich(
-        &self,
-        _task: &TaskSubmitted,
-        context: &ContextPackage,
+    async fn enrich<'a>(
+        &'a self,
+        _task: &'a TaskSubmitted,
+        context: &'a ContextPackage,
     ) -> Result<ContextPackage, EnrichmentError> {
         let safe_env = Self::filter_safe_env_vars();
         let mut enriched = context.clone();
@@ -103,10 +103,10 @@ impl EnrichmentStrategy for EnvEnrichmentPlugin {
         Ok(enriched)
     }
 
-    async fn on_complete(
-        &self,
-        _session_id: &str,
-        _result: &TaskComplete,
+    async fn on_complete<'a>(
+        &'a self,
+        _session_id: &'a str,
+        _result: &'a TaskComplete,
     ) -> Result<(), EnrichmentError> {
         Ok(())
     }

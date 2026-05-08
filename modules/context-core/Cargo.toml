@@ -16,6 +16,8 @@ tracing-subscriber = { workspace = true }
 serde_yaml = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 chrono = { workspace = true }
+async-trait = "0.1"
+uuid = { version = "1", features = ["v4"] }
 
 # Built-in plugin crates loaded by plugin_id at runtime
 wireframe-ai-storage-sqlite = { package = "storage-sqlite", path = "../../plugins/context/storage-sqlite" }

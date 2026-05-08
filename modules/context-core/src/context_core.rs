@@ -1,11 +1,14 @@
 use agentic_sdk::envelope::Envelope;
 use agentic_sdk::message_types::{ContextPackage, TaskComplete, TaskEnriched, TaskSubmitted, ChatMessage, MemoryChunk};
-use agentic_sdk::plugins::context::{EnrichmentStrategy, MemoryBackend, StorageBackend, StorageError, MemoryError, EnrichmentError};
+use agentic_sdk::plugins::context::{EnrichmentStrategy, MemoryBackend, StorageBackend, StorageError, MemoryError};
+use async_trait::async_trait;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::sync::{RwLock, Semaphore};
 use tracing::{error, info};
+use uuid::Uuid;
 
 /// Simple LRU cache entry
 #[derive(Clone)]
@@ -491,9 +494,9 @@ impl InMemoryStorage {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl StorageBackend for InMemoryStorage {
-    async fn ensure_session(&self, session_id: &str) -> Result<(), StorageError> {
+    async fn ensure_session<'a>(&'a self, session_id: &'a str) -> Result<(), StorageError> {
         let mut sessions = self.sessions.write().await;
         if !sessions.contains_key(session_id) {
             sessions.insert(session_id.to_string(), Vec::new());
@@ -501,11 +504,11 @@ impl StorageBackend for InMemoryStorage {
         Ok(())
     }
 
-    async fn store_message(
-        &self,
-        session_id: &str,
-        role: &str,
-        content: &str,
+    async fn store_message<'a>(
+        &'a self,
+        session_id: &'a str,
+        role: &'a str,
+        content: &'a str,
     ) -> Result<(), StorageError> {
         let mut sessions = self.sessions.write().await;
         let messages = sessions.entry(session_id.to_string()).or_insert_with(Vec::new);
@@ -517,9 +520,9 @@ impl StorageBackend for InMemoryStorage {
         Ok(())
     }
 
-    async fn load_session_history(
-        &self,
-        session_id: &str,
+    async fn load_session_history<'a>(
+        &'a self,
+        session_id: &'a str,
         limit: usize,
     ) -> Result<Vec<ChatMessage>, StorageError> {
         let sessions = self.sessions.read().await;
@@ -537,7 +540,7 @@ impl StorageBackend for InMemoryStorage {
     }
 }
 
-/// Built-in in-memory memory backend for basic functionality.
+/// Built-in in-memory memory backend for testing.
 pub struct InMemoryBackend {
     chunks: Arc<RwLock<HashMap<String, Vec<MemoryChunk>>>>,
 }
@@ -550,12 +553,12 @@ impl InMemoryBackend {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl MemoryBackend for InMemoryBackend {
-    async fn search(
-        &self,
-        query: &str,
-        session_id: &str,
+    async fn search<'a>(
+        &'a self,
+        query: &'a str,
+        session_id: &'a str,
         limit: usize,
     ) -> Result<Vec<MemoryChunk>, MemoryError> {
         let chunks = self.chunks.read().await;
@@ -572,26 +575,26 @@ impl MemoryBackend for InMemoryBackend {
         Ok(matched)
     }
 
-    async fn persist_chunk(
-        &self,
-        session_id: &str,
-        content: &str,
-        source: &str,
+    async fn persist_chunk<'a>(
+        &'a self,
+        session_id: &'a str,
+        content: &'a str,
+        source: &'a str,
     ) -> Result<(), MemoryError> {
         let mut chunks = self.chunks.write().await;
         let session_chunks = chunks.entry(session_id.to_string()).or_insert_with(Vec::new);
         session_chunks.push(MemoryChunk {
-            id: format!("mem_{}", session_chunks.len()),
+            id: Uuid::new_v4().to_string(),
             content: content.to_string(),
             source: source.to_string(),
-            relevance_score: 1.0,
+            relevance_score: 0.0,
         });
         Ok(())
     }
 
-    async fn load_chunks(
-        &self,
-        session_id: &str,
+    async fn load_chunks<'a>(
+        &'a self,
+        session_id: &'a str,
         limit: usize,
     ) -> Result<Vec<MemoryChunk>, MemoryError> {
         let chunks = self.chunks.read().await;

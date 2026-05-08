@@ -61,7 +61,3 @@ scripts/config.json
 # Build cache
 scripts/.build-cache/
 .build-cache/
-.windsurf
-.devin
-.agents
-integrations

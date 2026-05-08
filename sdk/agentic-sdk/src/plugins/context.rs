@@ -10,22 +10,22 @@ use thiserror::Error;
 /// Implementations handle persistence of chat sessions and messages,
 /// supporting different databases (SQLite, PostgreSQL, etc.).
 #[async_trait]
-pub trait StorageBackend: Plugin {
+pub trait StorageBackend: Send + Sync {
     /// Ensure a session exists in storage.
-    async fn ensure_session(&self, session_id: &str) -> Result<(), StorageError>;
+    async fn ensure_session<'a>(&'a self, session_id: &'a str) -> Result<(), StorageError>;
 
     /// Store a message in a session.
-    async fn store_message(
-        &self,
-        session_id: &str,
-        role: &str,
-        content: &str,
+    async fn store_message<'a>(
+        &'a self,
+        session_id: &'a str,
+        role: &'a str,
+        content: &'a str,
     ) -> Result<(), StorageError>;
 
     /// Load session history with optional limit.
-    async fn load_session_history(
-        &self,
-        session_id: &str,
+    async fn load_session_history<'a>(
+        &'a self,
+        session_id: &'a str,
         limit: usize,
     ) -> Result<Vec<ChatMessage>, StorageError>;
 }
@@ -35,27 +35,27 @@ pub trait StorageBackend: Plugin {
 /// Implementations handle memory search and persistence, supporting
 /// different strategies (FTS5, RAG, graph-based, etc.).
 #[async_trait]
-pub trait MemoryBackend: Plugin {
+pub trait MemoryBackend: Send + Sync {
     /// Search memory for relevant chunks.
-    async fn search(
-        &self,
-        query: &str,
-        session_id: &str,
+    async fn search<'a>(
+        &'a self,
+        query: &'a str,
+        session_id: &'a str,
         limit: usize,
     ) -> Result<Vec<MemoryChunk>, MemoryError>;
 
     /// Persist a memory chunk.
-    async fn persist_chunk(
-        &self,
-        session_id: &str,
-        content: &str,
-        source: &str,
+    async fn persist_chunk<'a>(
+        &'a self,
+        session_id: &'a str,
+        content: &'a str,
+        source: &'a str,
     ) -> Result<(), MemoryError>;
 
     /// Load memory chunks for a session.
-    async fn load_chunks(
-        &self,
-        session_id: &str,
+    async fn load_chunks<'a>(
+        &'a self,
+        session_id: &'a str,
         limit: usize,
     ) -> Result<Vec<MemoryChunk>, MemoryError>;
 }
@@ -65,19 +65,19 @@ pub trait MemoryBackend: Plugin {
 /// Implementations add context to tasks (memory retrieval, file context,
 /// environment variables, etc.). Multiple strategies can be chained in a pipeline.
 #[async_trait]
-pub trait EnrichmentStrategy: Plugin {
+pub trait EnrichmentStrategy: Plugin + Send + Sync {
     /// Enrich a task with additional context.
-    async fn enrich(
-        &self,
-        task: &TaskSubmitted,
-        base_context: &ContextPackage,
+    async fn enrich<'a>(
+        &'a self,
+        task: &'a TaskSubmitted,
+        base_context: &'a ContextPackage,
     ) -> Result<ContextPackage, EnrichmentError>;
 
     /// Called when a task completes, for post-processing.
-    async fn on_complete(
-        &self,
-        session_id: &str,
-        result: &TaskComplete,
+    async fn on_complete<'a>(
+        &'a self,
+        session_id: &'a str,
+        result: &'a TaskComplete,
     ) -> Result<(), EnrichmentError>;
 }
 

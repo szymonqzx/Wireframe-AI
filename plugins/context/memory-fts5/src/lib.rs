@@ -140,10 +140,10 @@ impl Plugin for FTS5MemoryPlugin {
 
 #[async_trait]
 impl MemoryBackend for FTS5MemoryPlugin {
-    async fn search(
-        &self,
-        query: &str,
-        _session_id: &str,
+    async fn search<'a>(
+        &'a self,
+        query: &'a str,
+        _session_id: &'a str,
         limit: usize,
     ) -> Result<Vec<MemoryChunk>, MemoryError> {
         let validated = match self.validate_query(query) {
@@ -205,11 +205,11 @@ impl MemoryBackend for FTS5MemoryPlugin {
         Ok(chunks)
     }
 
-    async fn persist_chunk(
-        &self,
-        session_id: &str,
-        content: &str,
-        source: &str,
+    async fn persist_chunk<'a>(
+        &'a self,
+        session_id: &'a str,
+        content: &'a str,
+        source: &'a str,
     ) -> Result<(), MemoryError> {
         let validated = self.validate_session_id(session_id)?;
         let conn = self
@@ -223,9 +223,9 @@ impl MemoryBackend for FTS5MemoryPlugin {
         Ok(())
     }
 
-    async fn load_chunks(
-        &self,
-        session_id: &str,
+    async fn load_chunks<'a>(
+        &'a self,
+        session_id: &'a str,
         limit: usize,
     ) -> Result<Vec<MemoryChunk>, MemoryError> {
         let validated = self.validate_session_id(session_id)?;

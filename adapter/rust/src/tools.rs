@@ -90,7 +90,7 @@ pub fn missing_param_response(param: &str) -> Value {
 }
 
 /// Detect the appropriate shell and flag for the current platform.
-fn detect_platform_shell() -> (String, String) {
+pub fn detect_platform_shell() -> (String, String) {
     // Explicit override takes precedence
     if let Ok(explicit) = env::var("WIREFRAME_AI_SHELL") {
         let shell = explicit.trim().to_string();

@@ -12,4 +12,4 @@
 
 pub mod context_core;
 
-pub use context_core::ContextCore;
+pub use context_core::{ContextCore, InMemoryStorage, InMemoryBackend};

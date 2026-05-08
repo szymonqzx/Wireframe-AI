@@ -109,7 +109,7 @@ impl Plugin for SQLiteStoragePlugin {
 
 #[async_trait]
 impl StorageBackend for SQLiteStoragePlugin {
-    async fn ensure_session(&self, session_id: &str) -> Result<(), StorageError> {
+    async fn ensure_session<'a>(&'a self, session_id: &'a str) -> Result<(), StorageError> {
         let validated = self.validate_session_id(session_id)?;
         let conn = self
             .conn
@@ -123,11 +123,11 @@ impl StorageBackend for SQLiteStoragePlugin {
         Ok(())
     }
 
-    async fn store_message(
-        &self,
-        session_id: &str,
-        role: &str,
-        content: &str,
+    async fn store_message<'a>(
+        &'a self,
+        session_id: &'a str,
+        role: &'a str,
+        content: &'a str,
     ) -> Result<(), StorageError> {
         let validated = self.validate_session_id(session_id)?;
         let conn = self
@@ -141,9 +141,9 @@ impl StorageBackend for SQLiteStoragePlugin {
         Ok(())
     }
 
-    async fn load_session_history(
-        &self,
-        session_id: &str,
+    async fn load_session_history<'a>(
+        &'a self,
+        session_id: &'a str,
         limit: usize,
     ) -> Result<Vec<ChatMessage>, StorageError> {
         let validated = self.validate_session_id(session_id)?;

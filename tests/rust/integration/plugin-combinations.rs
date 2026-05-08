@@ -55,24 +55,24 @@ impl Plugin for MockStorageBackend {
 
 #[async_trait::async_trait]
 impl StorageBackend for MockStorageBackend {
-    async fn ensure_session(&self, _session_id: &str) -> Result<(), agentic_sdk::plugins::context::StorageError> {
+    async fn ensure_session<'a>(&'a self, _session_id: &'a str) -> Result<(), agentic_sdk::plugins::context::StorageError> {
         Ok(())
     }
 
-    async fn store_message(
-        &self,
-        _session_id: &str,
-        role: &str,
-        content: &str,
+    async fn store_message<'a>(
+        &'a self,
+        _session_id: &'a str,
+        role: &'a str,
+        content: &'a str,
     ) -> Result<(), agentic_sdk::plugins::context::StorageError> {
         // Simulate storing a message
         println!("Stored message: role={}, content={}", role, content);
         Ok(())
     }
 
-    async fn load_session_history(
-        &self,
-        _session_id: &str,
+    async fn load_session_history<'a>(
+        &'a self,
+        _session_id: &'a str,
         _limit: usize,
     ) -> Result<Vec<ChatMessage>, agentic_sdk::plugins::context::StorageError> {
         Ok(vec![
