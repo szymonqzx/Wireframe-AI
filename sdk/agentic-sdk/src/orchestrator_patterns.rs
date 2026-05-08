@@ -40,11 +40,7 @@ pub fn fan_out(enriched: &TaskEnriched, sub_tasks: Vec<String>) -> Vec<Envelope<
             adapter_hints: None,
             schema_version: 1,
         };
-        jobs.push(Envelope::new(
-            "agent.job",
-            job,
-            session_id.clone(),
-        ));
+        jobs.push(Envelope::new("agent.job", job, session_id.clone()));
     }
     jobs
 }

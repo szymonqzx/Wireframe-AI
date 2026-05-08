@@ -32,3 +32,10 @@ schema-validation = ["jsonschema"]
 [lib]
 name = "agentic_sdk"
 path = "src/lib.rs"
+
+[[bin]]
+name = "benchmark_serialize"
+path = "src/bin/benchmark_serialize.rs"
+
+[dev-dependencies]
+tempfile = "3.10"

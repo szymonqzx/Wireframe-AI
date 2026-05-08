@@ -483,14 +483,19 @@ impl BatchSerializer {
 
     /// Serialize multiple values with keys (for caching).
     #[inline]
-    pub fn serialize_batch_with_keys<T: Serialize>(
+    pub fn serialize_batch_with_keys<I, T>(
         &mut self,
-        items: &[(String, T)],
-    ) -> Result<Vec<(String, Vec<u8>)>, serde_json::Error> {
-        let mut results = Vec::with_capacity(items.len());
-        for (key, value) in items {
-            let bytes = self.serializer.serialize_to_vec(value)?;
-            results.push((key.clone(), bytes));
+        items: I,
+    ) -> Result<Vec<(String, Vec<u8>)>, serde_json::Error>
+    where
+        I: IntoIterator<Item = (String, T)>,
+        T: Serialize,
+    {
+        let iterator = items.into_iter();
+        let mut results = Vec::with_capacity(iterator.size_hint().0);
+        for (key, value) in iterator {
+            let bytes = self.serializer.serialize_to_vec(&value)?;
+            results.push((key, bytes));
         }
         Ok(results)
     }
