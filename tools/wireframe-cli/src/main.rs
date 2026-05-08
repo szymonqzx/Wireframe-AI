@@ -242,7 +242,7 @@ fn scaffold_module(name: &str, template: &TemplateType, out_dir: &Path) -> anyho
     fs::create_dir_all(out_dir)?;
 
     // Cargo.toml
-    let cargo_toml = generate_cargo_toml(name);
+    let cargo_toml = generate_cargo_toml(name, template);
     fs::write(out_dir.join("Cargo.toml"), cargo_toml)?;
 
     // src/main.rs
@@ -261,8 +261,25 @@ fn scaffold_module(name: &str, template: &TemplateType, out_dir: &Path) -> anyho
     Ok(())
 }
 
-fn generate_cargo_toml(name: &str) -> String {
+fn generate_cargo_toml(name: &str, template: &TemplateType) -> String {
     let sanitized = name.replace("-", "_");
+    let mut deps = r#"[dependencies]
+agentic-sdk = { workspace = true, features = ["macros"] }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }"#
+        .to_string();
+
+    if matches!(template, TemplateType::Integration) {
+        deps.push_str(
+            "
+reqwest = { version = \"0.12\", features = [\"json\"] }",
+        );
+    }
+
     format!(
         r#"[package]
 name = "{}"
@@ -274,17 +291,9 @@ description = "Wireframe AI module — {}"
 name = "{}"
 path = "src/main.rs"
 
-[dependencies]
-agentic-sdk = {{ workspace = true, features = ["macros"] }}
-tokio = {{ workspace = true }}
-serde = {{ workspace = true }}
-serde_json = {{ workspace = true }}
-tracing = {{ workspace = true }}
-tracing-subscriber = {{ workspace = true }}
-chrono = {{ workspace = true }}
-async-nats = {{ workspace = true }}
+{}
 "#,
-        sanitized, name, sanitized
+        sanitized, name, sanitized, deps
     )
 }
 
@@ -684,7 +693,17 @@ fn generate_integration_template(struct_name: &str) -> String {
 
 use agentic_sdk::{{Envelope, Module}};
 
-struct {};
+struct {} {{
+    client: reqwest::Client,
+}}
+
+impl Default for {} {{
+    fn default() -> Self {{
+        Self {{
+            client: reqwest::Client::new(),
+        }}
+    }}
+}}
 
 #[agentic_sdk::module(
     subscribes = ["integration.request"],
@@ -697,15 +716,30 @@ impl Module for {} {{
         env: Envelope<serde_json::Value>,
     ) -> Vec<Envelope<serde_json::Value>> {{
         let service = env.payload.get("service").and_then(|v| v.as_str()).unwrap_or("unknown");
-        tracing::info!(service, "handling integration request");
+        let url = env.payload.get("url").and_then(|v| v.as_str()).unwrap_or("https://jsonplaceholder.typicode.com/todos/1");
+        tracing::info!(service, url, "handling integration request");
 
-        // TODO: Call external API here
-        let response = serde_json::json!({{
-            "service": service,
-            "status": "pending",
-            "data": null,
-            "handled_at": chrono::Utc::now().timestamp(),
-        }});
+        let response = match self.client.get(url).send().await {{
+            Ok(res) => {{
+                let status = res.status().as_u16();
+                let body = res.json::<serde_json::Value>().await.unwrap_or(serde_json::json!({{}}));
+                serde_json::json!({{
+                    "service": service,
+                    "status": "success",
+                    "http_status": status,
+                    "data": body,
+                    "handled_at": chrono::Utc::now().timestamp(),
+                }})
+            }},
+            Err(err) => {{
+                serde_json::json!({{
+                    "service": service,
+                    "status": "error",
+                    "error": err.to_string(),
+                    "handled_at": chrono::Utc::now().timestamp(),
+                }})
+            }}
+        }};
 
         vec![env.reply("integration.response", response)]
     }}
@@ -714,10 +748,10 @@ impl Module for {} {{
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     tracing_subscriber::fmt::init();
-    {}.run("nats://localhost:4222").await
+    {}::default().run("nats://localhost:4222").await
 }}
 "#,
-        struct_name, struct_name, struct_name, struct_name
+        struct_name, struct_name, struct_name, struct_name, struct_name
     )
 }
 
@@ -1899,11 +1933,31 @@ fn handle_module_list(detailed: bool) -> anyhow::Result<()> {
     println!();
 
     let modules = vec![
-        ("wireframe-ai-interface", "Kernel interface module", "kernel/interface"),
-        ("wireframe-ai-context-core", "Context module with plugin support", "modules/context-core"),
-        ("wireframe-ai-orchestrator-core", "Orchestrator module with plugin support", "modules/orchestrator-core"),
-        ("wireframe-ai-sandbox-core", "Sandbox module with plugin support", "modules/sandbox-core"),
-        ("wireframe-adapter-rust", "Rust reasoning adapter", "adapter/rust"),
+        (
+            "wireframe-ai-interface",
+            "Kernel interface module",
+            "kernel/interface",
+        ),
+        (
+            "wireframe-ai-context-core",
+            "Context module with plugin support",
+            "modules/context-core",
+        ),
+        (
+            "wireframe-ai-orchestrator-core",
+            "Orchestrator module with plugin support",
+            "modules/orchestrator-core",
+        ),
+        (
+            "wireframe-ai-sandbox-core",
+            "Sandbox module with plugin support",
+            "modules/sandbox-core",
+        ),
+        (
+            "wireframe-adapter-rust",
+            "Rust reasoning adapter",
+            "adapter/rust",
+        ),
         ("wireframe-tui", "Terminal UI interface", "tools/tui-chat"),
     ];
 
@@ -1925,7 +1979,11 @@ fn handle_module_start(name: &str, build_mode: &str, nats_url: &str) -> anyhow::
     println!("Build mode: {}", build_mode);
     println!("NATS URL: {}", nats_url);
 
-    let build_flag = if build_mode == "release" { "--release" } else { "" };
+    let build_flag = if build_mode == "release" {
+        "--release"
+    } else {
+        ""
+    };
 
     let mut cmd = Command::new("cargo");
     cmd.arg("run").arg(build_flag).arg("-p").arg(name);
@@ -1984,7 +2042,9 @@ fn handle_module_status(name: &Option<String>) -> anyhow::Result<()> {
     if let Some(module_name) = name {
         println!("Status for module: {}", module_name);
         // Check if module process is running
-        let process_name = module_name.replace("wireframe-ai-", "").replace("wireframe-", "");
+        let process_name = module_name
+            .replace("wireframe-ai-", "")
+            .replace("wireframe-", "");
 
         #[cfg(unix)]
         {
@@ -2145,7 +2205,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Dev { module, nats_url } => {
             // Dev mode contains an infinite polling loop; run it on a blocking thread
             // so it does not starve the async runtime.
-            if let Err(e) = tokio::task::spawn_blocking(move || handle_dev(&module, &nats_url)).await?
+            if let Err(e) =
+                tokio::task::spawn_blocking(move || handle_dev(&module, &nats_url)).await?
             {
                 eprintln!("Dev mode failed: {}", e);
                 std::process::exit(1);
