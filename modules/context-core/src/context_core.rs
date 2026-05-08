@@ -1,9 +1,11 @@
 use agentic_sdk::envelope::Envelope;
-use agentic_sdk::message_types::{ContextPackage, TaskComplete, TaskEnriched, TaskSubmitted, ChatMessage};
+use agentic_sdk::message_types::{
+    ChatMessage, ContextPackage, TaskComplete, TaskEnriched, TaskSubmitted,
+};
 use agentic_sdk::plugins::context::{EnrichmentStrategy, MemoryBackend, StorageBackend};
-use std::sync::Arc;
-use std::path::PathBuf;
 use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{RwLock, Semaphore};
 use tracing::{error, info};
@@ -13,7 +15,7 @@ use tracing::{error, info};
 struct CacheEntry<T> {
     value: T,
     accessed_at: Instant,
-    version: u64,  // For cache invalidation
+    version: u64, // For cache invalidation
 }
 
 impl<T> CacheEntry<T> {
@@ -79,7 +81,7 @@ struct LruCache<T> {
     entries: HashMap<String, CacheEntry<T>>,
     max_size: usize,
     ttl: Duration,
-    global_version: Arc<std::sync::atomic::AtomicU64>,  // Global version for invalidation
+    global_version: Arc<std::sync::atomic::AtomicU64>, // Global version for invalidation
     invalidation_strategy: InvalidationStrategy,
 }
 
@@ -139,7 +141,11 @@ impl<T: Clone> LruCache<T> {
     }
 
     #[inline]
-    fn new_with_invalidation(max_size: usize, ttl: Duration, strategy: InvalidationStrategy) -> Self {
+    fn new_with_invalidation(
+        max_size: usize,
+        ttl: Duration,
+        strategy: InvalidationStrategy,
+    ) -> Self {
         Self {
             entries: HashMap::with_capacity(max_size),
             max_size,
@@ -153,21 +159,24 @@ impl<T: Clone> LruCache<T> {
     fn get(&mut self, key: &str) -> Option<T> {
         if let Some(entry) = self.entries.get_mut(key) {
             // Check version-based invalidation
-            if self.invalidation_strategy == InvalidationStrategy::VersionBased 
-                || self.invalidation_strategy == InvalidationStrategy::Combined {
-                let global_ver = self.global_version.load(std::sync::atomic::Ordering::SeqCst);
+            if self.invalidation_strategy == InvalidationStrategy::VersionBased
+                || self.invalidation_strategy == InvalidationStrategy::Combined
+            {
+                let global_ver = self
+                    .global_version
+                    .load(std::sync::atomic::Ordering::SeqCst);
                 if entry.version() < global_ver {
                     self.entries.remove(key);
                     return None;
                 }
             }
-            
+
             // Check time-based invalidation
             if entry.is_expired(self.ttl) {
                 self.entries.remove(key);
                 return None;
             }
-            
+
             entry.touch();
             Some(entry.value.clone())
         } else {
@@ -179,7 +188,8 @@ impl<T: Clone> LruCache<T> {
     fn put(&mut self, key: String, value: T) {
         // Evict if at capacity
         if self.entries.len() >= self.max_size {
-            if let Some(oldest_key) = self.entries
+            if let Some(oldest_key) = self
+                .entries
                 .iter()
                 .min_by_key(|(_, entry)| entry.accessed_at)
                 .map(|(k, _)| k.clone())
@@ -187,8 +197,10 @@ impl<T: Clone> LruCache<T> {
                 self.entries.remove(&oldest_key);
             }
         }
-        
-        let current_version = self.global_version.load(std::sync::atomic::Ordering::SeqCst);
+
+        let current_version = self
+            .global_version
+            .load(std::sync::atomic::Ordering::SeqCst);
         let mut entry = CacheEntry::new(value);
         entry.version = current_version;
         self.entries.insert(key, entry);
@@ -206,7 +218,8 @@ impl<T: Clone> LruCache<T> {
 
     #[inline]
     fn invalidate_all(&mut self) {
-        self.global_version.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.global_version
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     }
 
     #[inline]
@@ -218,7 +231,8 @@ impl<T: Clone> LruCache<T> {
 
     #[inline]
     fn global_version(&self) -> u64 {
-        self.global_version.load(std::sync::atomic::Ordering::SeqCst)
+        self.global_version
+            .load(std::sync::atomic::Ordering::SeqCst)
     }
 
     #[inline]
@@ -257,7 +271,7 @@ impl ContextCore {
         let cache_ttl = Duration::from_secs(300); // 5 minutes TTL
         let cache_size = 100; // Max 100 entries per cache
         let interner_size = 1000; // Max 1000 interned strings
-        
+
         Self {
             storage: Arc::new(RwLock::new(None)),
             memory: Arc::new(RwLock::new(None)),
@@ -270,7 +284,7 @@ impl ContextCore {
             enrichment_cache: Arc::new(RwLock::new(LruCache::new(cache_size, cache_ttl))),
             string_interner: Arc::new(RwLock::new(StringInterner::new(interner_size))),
             storage_semaphore: Arc::new(Semaphore::new(10)), // Max 10 concurrent storage ops
-            memory_semaphore: Arc::new(Semaphore::new(10)), // Max 10 concurrent memory ops
+            memory_semaphore: Arc::new(Semaphore::new(10)),  // Max 10 concurrent memory ops
         }
     }
 
@@ -408,8 +422,11 @@ impl ContextCore {
         }
 
         // 5. Run enrichment pipeline with caching
-        let enrichment_key = format!("enrich:{}:{}", task.session_id, 
-            task.user_input.chars().take(50).collect::<String>());
+        let enrichment_key = format!(
+            "enrich:{}:{}",
+            task.session_id,
+            task.user_input.chars().take(50).collect::<String>()
+        );
         let context = {
             let mut cache = self.enrichment_cache.write().await;
             if let Some(cached) = cache.get(&enrichment_key) {
@@ -428,7 +445,7 @@ impl ContextCore {
                 for plugin in pipeline.iter() {
                     ctx = plugin.enrich(&task, &ctx).await.unwrap_or(ctx);
                 }
-                
+
                 cache.put(enrichment_key, ctx.clone());
                 ctx
             }

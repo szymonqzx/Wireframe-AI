@@ -15,16 +15,19 @@ use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::OnceLock;
 use tracing::{error, info, warn};
-use wireframe_provider_core::{Message, Provider, SessionManager, StreamEvent};
-use wireframe_provider_core::discovery::ProviderDiscoveryRegistry;
+use wireframe_adapter::mcp_client::McpStdioClient;
 use wireframe_adapter::provider_config;
 use wireframe_adapter::security::{sanitize_string, validate_path, validate_path_for_write};
-use wireframe_adapter::mcp_client::McpStdioClient;
 use wireframe_adapter::selfdev::{compile_adapter, run_safety_checks};
-use wireframe_adapter::tools::{execute_shell, read_file, write_file, list_directory, ToolContext, ToolName, build_tool_definitions};
+use wireframe_adapter::tools::{
+    build_tool_definitions, execute_shell, list_directory, read_file, write_file, ToolContext,
+    ToolName,
+};
 use wireframe_adapter::utils::{estimate_tokens, extract_side_effects};
-use std::sync::OnceLock;
+use wireframe_provider_core::discovery::ProviderDiscoveryRegistry;
+use wireframe_provider_core::{Message, Provider, SessionManager, StreamEvent};
 
 /// Selfdev tool execution module.
 mod selfdev_tools {
@@ -66,17 +69,15 @@ mod selfdev_tools {
 
         let sanitized = sanitize_string(path);
         match validate_path(sanitized.as_ref(), Some(source_root)) {
-            Ok(validated_path) => {
-                match tokio::fs::read_to_string(&validated_path).await {
-                    Ok(content) => serde_json::json!({
-                        "content": content,
-                        "path": validated_path.to_string_lossy().to_string()
-                    }),
-                    Err(e) => serde_json::json!({
-                        "error": format!("Failed to read source file: {}", e)
-                    }),
-                }
-            }
+            Ok(validated_path) => match tokio::fs::read_to_string(&validated_path).await {
+                Ok(content) => serde_json::json!({
+                    "content": content,
+                    "path": validated_path.to_string_lossy().to_string()
+                }),
+                Err(e) => serde_json::json!({
+                    "error": format!("Failed to read source file: {}", e)
+                }),
+            },
             Err(e) => {
                 warn!("Path validation failed: {}", e);
                 serde_json::json!({
@@ -180,7 +181,7 @@ mod selfdev_tools {
             Ok(result) => result,
             Err(e) => serde_json::json!({
                 "error": format!("Compilation failed: {}", e)
-            })
+            }),
         }
     }
 
@@ -226,7 +227,11 @@ mod selfdev_tools {
 
         match compile_result {
             Ok(result_json) => {
-                if result_json.get("success").and_then(|v| v.as_bool()).unwrap_or(false) {
+                if result_json
+                    .get("success")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false)
+                {
                     info!("Compilation successful, initiating restart");
                     serde_json::json!({
                         "success": true,
@@ -239,7 +244,7 @@ mod selfdev_tools {
             }
             Err(e) => serde_json::json!({
                 "error": format!("Compilation failed: {}", e)
-            })
+            }),
         }
     }
 
@@ -286,7 +291,8 @@ mod messages {
         if !job.context.memory_chunks.is_empty() {
             // Pre-allocate capacity for memory text to avoid reallocations
             let memory_chunks = &job.context.memory_chunks;
-            let estimated_size = memory_chunks.iter()
+            let estimated_size = memory_chunks
+                .iter()
                 .map(|c| c.source.len() + c.content.len() + 50)
                 .sum::<usize>();
             let mut memory_text = String::with_capacity(estimated_size);
@@ -458,19 +464,17 @@ impl AdapterState {
             .map(|s| PathBuf::from(s));
         let config_path = config_path_buf.as_deref();
 
-        let config = provider_config::load_provider_config(config_path)
-            .unwrap_or_else(|e| {
-                warn!("Failed to load provider config: {}, using defaults", e);
-                provider_config::default_config_from_env()
-            });
+        let config = provider_config::load_provider_config(config_path).unwrap_or_else(|e| {
+            warn!("Failed to load provider config: {}, using defaults", e);
+            provider_config::default_config_from_env()
+        });
 
         // Build provider registry from configuration (once)
         let registry = Arc::new(
-            provider_config::build_registry_from_config(&config)
-                .unwrap_or_else(|e| {
-                    warn!("Failed to build provider registry: {}, using fallback", e);
-                    ProviderDiscoveryRegistry::new()
-                })
+            provider_config::build_registry_from_config(&config).unwrap_or_else(|e| {
+                warn!("Failed to build provider registry: {}, using fallback", e);
+                ProviderDiscoveryRegistry::new()
+            }),
         );
 
         // Build backward-compatible provider map from registry
@@ -646,7 +650,12 @@ async fn process_job(state: &Arc<AdapterState>, job: AgentJob) -> Result<AgentRe
     let (files_written, commands_run) = extract_side_effects(&tool_invocations);
 
     // Update session (clone user_input and final_text since we need owned Strings)
-    messages::update_session(state, &session_id, user_input.to_string(), final_text.clone());
+    messages::update_session(
+        state,
+        &session_id,
+        user_input.to_string(),
+        final_text.clone(),
+    );
 
     // Estimate tokens
     let prompt_tokens = estimate_tokens(&messages);
@@ -749,7 +758,10 @@ async fn execute_tool_sandbox(
             let command = params.get("command").and_then(|v| v.as_str()).unwrap_or("");
             let working_dir = params.get("working_dir").and_then(|v| v.as_str());
             if let Some(dir) = working_dir {
-                ("shell_exec", serde_json::json!({"command": command, "working_dir": dir}))
+                (
+                    "shell_exec",
+                    serde_json::json!({"command": command, "working_dir": dir}),
+                )
             } else {
                 ("shell_exec", serde_json::json!({"command": command}))
             }
@@ -761,7 +773,10 @@ async fn execute_tool_sandbox(
         "file_write" => {
             let path = params.get("path").and_then(|v| v.as_str()).unwrap_or("");
             let content = params.get("content").and_then(|v| v.as_str()).unwrap_or("");
-            ("file_write", serde_json::json!({"path": path, "content": content}))
+            (
+                "file_write",
+                serde_json::json!({"path": path, "content": content}),
+            )
         }
         "file_list" => {
             let path = params.get("path").and_then(|v| v.as_str()).unwrap_or("");
@@ -864,8 +879,8 @@ fn init_tracing() {
 
 /// Connect to NATS with optimized settings.
 async fn connect_nats() -> Result<async_nats::Client> {
-    let nats_url = env::var("WIREFRAME_AI_NATS_URL")
-        .unwrap_or_else(|_| "nats://localhost:4222".to_string());
+    let nats_url =
+        env::var("WIREFRAME_AI_NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".to_string());
 
     info!("Connecting to NATS at {}", nats_url);
 
@@ -898,13 +913,14 @@ fn log_adapter_config(state: &AdapterState) {
 }
 
 /// Announce module online with selfdev capability.
-async fn announce_module_online(
-    client: &async_nats::Client,
-    state: &AdapterState,
-) -> Result<()> {
-    let source_root_str = state.source_root.as_ref()
+async fn announce_module_online(client: &async_nats::Client, state: &AdapterState) -> Result<()> {
+    let source_root_str = state
+        .source_root
+        .as_ref()
         .map(|p| p.to_string_lossy().to_string());
-    let binary_path_str = state.binary_path.as_ref()
+    let binary_path_str = state
+        .binary_path
+        .as_ref()
         .map(|p| p.to_string_lossy().to_string());
 
     announce_online_with_selfdev(
@@ -916,7 +932,8 @@ async fn announce_module_online(
         state.selfdev_enabled,
         source_root_str.as_deref(),
         binary_path_str.as_deref(),
-    ).await?;
+    )
+    .await?;
 
     Ok(())
 }
@@ -971,15 +988,15 @@ async fn process_message(
 }
 
 /// Run the main message processing loop.
-async fn run_message_loop(
-    client: async_nats::Client,
-    state: Arc<AdapterState>,
-) -> Result<()> {
+async fn run_message_loop(client: async_nats::Client, state: Arc<AdapterState>) -> Result<()> {
     let mut subscriber = client
         .queue_subscribe(AGENT_JOB_TOPIC, AGENT_WORKER_QUEUE.to_string())
         .await?;
 
-    info!("Subscribed to {} with queue group {}", AGENT_JOB_TOPIC, AGENT_WORKER_QUEUE);
+    info!(
+        "Subscribed to {} with queue group {}",
+        AGENT_JOB_TOPIC, AGENT_WORKER_QUEUE
+    );
 
     while let Some(message) = subscriber.next().await {
         if let Err(e) = process_message(message, &state, &client).await {

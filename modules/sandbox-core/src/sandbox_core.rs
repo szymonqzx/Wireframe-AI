@@ -1,7 +1,7 @@
 //! Sandbox core — MCP server orchestration and plugin lifecycle management.
 
-use agentic_sdk::plugins::sandbox::{Tool, SecurityPolicy, ResourceLimiter, SandboxContext};
 use agentic_sdk::plugin::Plugin;
+use agentic_sdk::plugins::sandbox::{ResourceLimiter, SandboxContext, SecurityPolicy, Tool};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -56,13 +56,19 @@ impl SandboxCore {
     }
 
     /// Load plugins from configuration file.
-    pub async fn load_plugins_from_config(&self, config_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn load_plugins_from_config(
+        &self,
+        config_path: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let config_content = tokio::fs::read_to_string(config_path).await?;
         let config: PluginConfig = serde_yaml::from_str(&config_content)?;
 
         // Load tool plugins
         for tool_config in config.tools {
-            if let Some(tool) = self.create_tool_plugin(&tool_config.name, &tool_config.config).await {
+            if let Some(tool) = self
+                .create_tool_plugin(&tool_config.name, &tool_config.config)
+                .await
+            {
                 self.register_tool(tool).await;
                 tracing::info!("Loaded tool plugin: {}", tool_config.name);
             }
@@ -70,7 +76,10 @@ impl SandboxCore {
 
         // Load security plugins
         for security_config in config.security {
-            if let Some(security) = self.create_security_plugin(&security_config.name, &security_config.config).await {
+            if let Some(security) = self
+                .create_security_plugin(&security_config.name, &security_config.config)
+                .await
+            {
                 self.set_security(security).await;
                 tracing::info!("Loaded security plugin: {}", security_config.name);
             }
@@ -78,7 +87,10 @@ impl SandboxCore {
 
         // Load resource plugins
         for resource_config in config.resources {
-            if let Some(limiter) = self.create_resource_plugin(&resource_config.name, &resource_config.config).await {
+            if let Some(limiter) = self
+                .create_resource_plugin(&resource_config.name, &resource_config.config)
+                .await
+            {
                 self.set_resource_limiter(limiter).await;
                 tracing::info!("Loaded resource plugin: {}", resource_config.name);
             }
@@ -88,14 +100,22 @@ impl SandboxCore {
     }
 
     /// Create a tool plugin by name (placeholder for dynamic loading).
-    async fn create_tool_plugin(&self, name: &str, _config: &serde_json::Value) -> Option<Arc<dyn Tool>> {
+    async fn create_tool_plugin(
+        &self,
+        name: &str,
+        _config: &serde_json::Value,
+    ) -> Option<Arc<dyn Tool>> {
         // For now, return None - this would be implemented with dynamic loading
         tracing::warn!("Tool plugin creation not implemented for: {}", name);
         None
     }
 
     /// Create a security plugin by name (placeholder for dynamic loading).
-    async fn create_security_plugin(&self, name: &str, config: &serde_json::Value) -> Option<Arc<dyn SecurityPolicy>> {
+    async fn create_security_plugin(
+        &self,
+        name: &str,
+        config: &serde_json::Value,
+    ) -> Option<Arc<dyn SecurityPolicy>> {
         match name {
             "whitelist" => Some(Arc::new(WhitelistPolicy::new(config))),
             _ => {
@@ -106,7 +126,11 @@ impl SandboxCore {
     }
 
     /// Create a resource plugin by name (placeholder for dynamic loading).
-    async fn create_resource_plugin(&self, name: &str, config: &serde_json::Value) -> Option<Arc<dyn ResourceLimiter>> {
+    async fn create_resource_plugin(
+        &self,
+        name: &str,
+        config: &serde_json::Value,
+    ) -> Option<Arc<dyn ResourceLimiter>> {
         match name {
             "unix" => Some(Arc::new(UnixResourceLimiter::new(config))),
             _ => {
@@ -184,9 +208,10 @@ impl SandboxCore {
             allowed_paths: vec![self.sandbox_root.clone()],
         };
 
-        let result = tool.execute(params, &context).await.map_err(|e| {
-            Box::<dyn std::error::Error>::from(e)
-        })?;
+        let result = tool
+            .execute(params, &context)
+            .await
+            .map_err(|e| Box::<dyn std::error::Error>::from(e))?;
 
         Ok(result)
     }
@@ -238,16 +263,18 @@ impl WhitelistPolicy {
                     .map(|s| s.to_string())
                     .collect()
             })
-            .unwrap_or_else(|| vec![
-                "ls".to_string(),
-                "pwd".to_string(),
-                "echo".to_string(),
-                "cat".to_string(),
-                "grep".to_string(),
-                "find".to_string(),
-                "head".to_string(),
-                "tail".to_string(),
-            ]);
+            .unwrap_or_else(|| {
+                vec![
+                    "ls".to_string(),
+                    "pwd".to_string(),
+                    "echo".to_string(),
+                    "cat".to_string(),
+                    "grep".to_string(),
+                    "find".to_string(),
+                    "head".to_string(),
+                    "tail".to_string(),
+                ]
+            });
 
         Self {
             allowed_paths,
@@ -270,7 +297,10 @@ impl Plugin for WhitelistPolicy {
         "Whitelist-based security policy"
     }
 
-    async fn initialize(&mut self, _config: &serde_json::Value) -> Result<(), agentic_sdk::plugin::PluginError> {
+    async fn initialize(
+        &mut self,
+        _config: &serde_json::Value,
+    ) -> Result<(), agentic_sdk::plugin::PluginError> {
         Ok(())
     }
 
@@ -293,10 +323,12 @@ impl SecurityPolicy for WhitelistPolicy {
         let base_cmd = command.split_whitespace().next().unwrap_or("");
 
         if !self.allowed_commands.contains(&base_cmd.to_string()) {
-            return Err(agentic_sdk::plugins::sandbox::SecurityError::CommandRejected(format!(
-                "Command '{}' not in whitelist",
-                base_cmd
-            )));
+            return Err(
+                agentic_sdk::plugins::sandbox::SecurityError::CommandRejected(format!(
+                    "Command '{}' not in whitelist",
+                    base_cmd
+                )),
+            );
         }
 
         Ok(true)
@@ -309,30 +341,42 @@ impl SecurityPolicy for WhitelistPolicy {
     ) -> Result<bool, agentic_sdk::plugins::sandbox::SecurityError> {
         // Check for path traversal
         if path.contains("..") {
-            return Err(agentic_sdk::plugins::sandbox::SecurityError::FileAccessDenied(
-                "Path traversal not allowed".to_string(),
-            ));
+            return Err(
+                agentic_sdk::plugins::sandbox::SecurityError::FileAccessDenied(
+                    "Path traversal not allowed".to_string(),
+                ),
+            );
         }
 
         // Check if path is in allowed paths
         let is_allowed = self.allowed_paths.is_empty()
-            || self.allowed_paths.iter().any(|allowed| path.starts_with(allowed));
+            || self
+                .allowed_paths
+                .iter()
+                .any(|allowed| path.starts_with(allowed));
 
         if !is_allowed {
-            return Err(agentic_sdk::plugins::sandbox::SecurityError::FileAccessDenied(format!(
-                "Path '{}' not in whitelist",
-                path
-            )));
+            return Err(
+                agentic_sdk::plugins::sandbox::SecurityError::FileAccessDenied(format!(
+                    "Path '{}' not in whitelist",
+                    path
+                )),
+            );
         }
 
         Ok(true)
     }
 
-    async fn validate_network_access(&self, _url: &str) -> Result<bool, agentic_sdk::plugins::sandbox::SecurityError> {
+    async fn validate_network_access(
+        &self,
+        _url: &str,
+    ) -> Result<bool, agentic_sdk::plugins::sandbox::SecurityError> {
         // Default: deny all network access
-        Err(agentic_sdk::plugins::sandbox::SecurityError::NetworkAccessDenied(
-            "Network access not allowed".to_string(),
-        ))
+        Err(
+            agentic_sdk::plugins::sandbox::SecurityError::NetworkAccessDenied(
+                "Network access not allowed".to_string(),
+            ),
+        )
     }
 }
 
@@ -385,7 +429,10 @@ impl Plugin for UnixResourceLimiter {
         "Unix-specific resource limiter"
     }
 
-    async fn initialize(&mut self, _config: &serde_json::Value) -> Result<(), agentic_sdk::plugin::PluginError> {
+    async fn initialize(
+        &mut self,
+        _config: &serde_json::Value,
+    ) -> Result<(), agentic_sdk::plugin::PluginError> {
         Ok(())
     }
 
@@ -409,7 +456,10 @@ impl ResourceLimiter for UnixResourceLimiter {
         Ok(true)
     }
 
-    async fn check_memory_limit(&self, current_usage: usize) -> Result<bool, agentic_sdk::plugins::sandbox::ResourceError> {
+    async fn check_memory_limit(
+        &self,
+        current_usage: usize,
+    ) -> Result<bool, agentic_sdk::plugins::sandbox::ResourceError> {
         // Convert MB to bytes
         let max_bytes = self.max_memory_mb * 1024 * 1024;
         if current_usage > max_bytes as usize {
@@ -484,7 +534,12 @@ mod tests {
         });
 
         let policy = WhitelistPolicy::new(&config);
-        let result = policy.validate_file_access("/tmp/test.txt", agentic_sdk::plugins::sandbox::FileOperation::Read).await;
+        let result = policy
+            .validate_file_access(
+                "/tmp/test.txt",
+                agentic_sdk::plugins::sandbox::FileOperation::Read,
+            )
+            .await;
         assert!(result.is_ok());
     }
 
@@ -497,7 +552,12 @@ mod tests {
         });
 
         let policy = WhitelistPolicy::new(&config);
-        let result = policy.validate_file_access("/etc/passwd", agentic_sdk::plugins::sandbox::FileOperation::Read).await;
+        let result = policy
+            .validate_file_access(
+                "/etc/passwd",
+                agentic_sdk::plugins::sandbox::FileOperation::Read,
+            )
+            .await;
         assert!(result.is_err());
     }
 
@@ -642,7 +702,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_sandbox_core_creation() {
-        let sandbox_root = std::env::temp_dir().join("sandbox-test").to_string_lossy().to_string();
+        let sandbox_root = std::env::temp_dir()
+            .join("sandbox-test")
+            .to_string_lossy()
+            .to_string();
         let sandbox = SandboxCore::new(sandbox_root.clone());
 
         assert_eq!(sandbox.sandbox_root(), sandbox_root);
@@ -650,24 +713,44 @@ mod tests {
 
     #[tokio::test]
     async fn test_sandbox_core_register_tool() {
-        let sandbox_root = std::env::temp_dir().join("sandbox-test-tools").to_string_lossy().to_string();
+        let sandbox_root = std::env::temp_dir()
+            .join("sandbox-test-tools")
+            .to_string_lossy()
+            .to_string();
         let sandbox = SandboxCore::new(sandbox_root);
 
         // Create a mock tool for testing
         struct MockTool;
         #[async_trait::async_trait]
         impl Plugin for MockTool {
-            fn plugin_id(&self) -> &'static str { "mock-tool" }
-            fn version(&self) -> &'static str { "1.0.0" }
-            fn description(&self) -> &'static str { "Mock tool for testing" }
-            async fn initialize(&mut self, _config: &serde_json::Value) -> Result<(), agentic_sdk::plugin::PluginError> { Ok(()) }
-            async fn health_check(&self) -> Result<bool, agentic_sdk::plugin::PluginError> { Ok(true) }
-            async fn shutdown(&mut self) -> Result<(), agentic_sdk::plugin::PluginError> { Ok(()) }
+            fn plugin_id(&self) -> &'static str {
+                "mock-tool"
+            }
+            fn version(&self) -> &'static str {
+                "1.0.0"
+            }
+            fn description(&self) -> &'static str {
+                "Mock tool for testing"
+            }
+            async fn initialize(
+                &mut self,
+                _config: &serde_json::Value,
+            ) -> Result<(), agentic_sdk::plugin::PluginError> {
+                Ok(())
+            }
+            async fn health_check(&self) -> Result<bool, agentic_sdk::plugin::PluginError> {
+                Ok(true)
+            }
+            async fn shutdown(&mut self) -> Result<(), agentic_sdk::plugin::PluginError> {
+                Ok(())
+            }
         }
 
         #[async_trait::async_trait]
         impl Tool for MockTool {
-            fn tool_name(&self) -> &'static str { "mock" }
+            fn tool_name(&self) -> &'static str {
+                "mock"
+            }
             fn input_schema(&self) -> serde_json::Value {
                 serde_json::json!({
                     "type": "object",
@@ -675,7 +758,11 @@ mod tests {
                     "required": []
                 })
             }
-            async fn execute(&self, _params: serde_json::Value, _context: &SandboxContext) -> Result<serde_json::Value, agentic_sdk::plugins::sandbox::ToolError> {
+            async fn execute(
+                &self,
+                _params: serde_json::Value,
+                _context: &SandboxContext,
+            ) -> Result<serde_json::Value, agentic_sdk::plugins::sandbox::ToolError> {
                 Ok(serde_json::json!({"result": "mock result"}))
             }
         }
@@ -690,7 +777,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_sandbox_core_set_security() {
-        let sandbox_root = std::env::temp_dir().join("sandbox-test-security").to_string_lossy().to_string();
+        let sandbox_root = std::env::temp_dir()
+            .join("sandbox-test-security")
+            .to_string_lossy()
+            .to_string();
         let sandbox = SandboxCore::new(sandbox_root);
 
         let config = serde_json::json!({
@@ -708,7 +798,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_sandbox_core_set_resource_limiter() {
-        let sandbox_root = std::env::temp_dir().join("sandbox-test-resources").to_string_lossy().to_string();
+        let sandbox_root = std::env::temp_dir()
+            .join("sandbox-test-resources")
+            .to_string_lossy()
+            .to_string();
         let sandbox = SandboxCore::new(sandbox_root);
 
         let config = serde_json::json!({
@@ -726,11 +819,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_sandbox_core_execute_tool_without_security() {
-        let sandbox_root = std::env::temp_dir().join("sandbox-test-exec-no-sec").to_string_lossy().to_string();
+        let sandbox_root = std::env::temp_dir()
+            .join("sandbox-test-exec-no-sec")
+            .to_string_lossy()
+            .to_string();
         let sandbox = SandboxCore::new(sandbox_root);
 
         // Should fail because no tool is registered
-        let result = sandbox.execute_tool("nonexistent", serde_json::json!({})).await;
+        let result = sandbox
+            .execute_tool("nonexistent", serde_json::json!({}))
+            .await;
         assert!(result.is_err());
     }
 }

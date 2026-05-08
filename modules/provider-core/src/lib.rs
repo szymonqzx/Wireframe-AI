@@ -17,8 +17,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::Duration;
 use std::sync::OnceLock;
+use std::time::Duration;
 
 /// Stream of events from a provider.
 pub type EventStream = Pin<Box<dyn Stream<Item = Result<StreamEvent>> + Send>>;
@@ -330,12 +330,7 @@ impl SessionManager {
     }
 
     /// Ensure a session exists (create or reuse).
-    pub fn ensure_session(
-        &self,
-        session_id: Option<&str>,
-        provider: &str,
-        model: &str,
-    ) -> String {
+    pub fn ensure_session(&self, session_id: Option<&str>, provider: &str, model: &str) -> String {
         if let Some(id) = session_id {
             if self.sessions.contains_key(id) {
                 // Update last accessed on reuse
@@ -364,7 +359,10 @@ impl SessionManager {
     }
 
     /// Get a mutable session by ID (for internal use).
-    pub fn get_session_mut(&self, session_id: &str) -> Option<dashmap::mapref::one::RefMut<'_, String, Session>> {
+    pub fn get_session_mut(
+        &self,
+        session_id: &str,
+    ) -> Option<dashmap::mapref::one::RefMut<'_, String, Session>> {
         self.sessions.get_mut(session_id)
     }
 
@@ -382,7 +380,7 @@ impl SessionManager {
     /// Only scans sessions if the count exceeds a threshold to avoid unnecessary scans.
     pub fn cleanup_expired(&self) -> usize {
         const CLEANUP_THRESHOLD: usize = 100;
-        
+
         // Skip cleanup if we have few sessions
         if self.sessions.len() < CLEANUP_THRESHOLD {
             return 0;
@@ -390,17 +388,18 @@ impl SessionManager {
 
         let mut expired_keys = Vec::new();
         let now = chrono::Utc::now();
-        
+
         for entry in self.sessions.iter() {
             // Fast path: check if session is definitely expired
             let last_accessed = entry.value().last_accessed;
             let elapsed = now.signed_duration_since(last_accessed);
-            let ttl_delta = chrono::Duration::from_std(self.ttl).unwrap_or(chrono::Duration::seconds(self.ttl.as_secs() as i64));
+            let ttl_delta = chrono::Duration::from_std(self.ttl)
+                .unwrap_or(chrono::Duration::seconds(self.ttl.as_secs() as i64));
             if elapsed > ttl_delta {
                 expired_keys.push(entry.key().clone());
             }
         }
-        
+
         let count = expired_keys.len();
         for key in expired_keys {
             self.sessions.remove(&key);

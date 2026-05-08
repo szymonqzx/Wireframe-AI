@@ -24,7 +24,9 @@ impl Plugin for TestPlugin {
 
     async fn initialize(&mut self, _config: &Value) -> Result<(), PluginError> {
         if self.should_fail_init {
-            return Err(PluginError::InitializationFailed("Simulated failure".to_string()));
+            return Err(PluginError::InitializationFailed(
+                "Simulated failure".to_string(),
+            ));
         }
         self.initialized = true;
         Ok(())
@@ -32,7 +34,9 @@ impl Plugin for TestPlugin {
 
     async fn health_check(&self) -> Result<bool, PluginError> {
         if self.should_fail_health {
-            return Err(PluginError::HealthCheckFailed("Simulated failure".to_string()));
+            return Err(PluginError::HealthCheckFailed(
+                "Simulated failure".to_string(),
+            ));
         }
         Ok(self.initialized)
     }

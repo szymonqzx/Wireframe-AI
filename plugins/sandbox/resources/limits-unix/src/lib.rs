@@ -1,7 +1,7 @@
 //! Unix resource limiter — enforces CPU and memory limits using rlimit.
 
 use agentic_sdk::plugin::Plugin;
-use agentic_sdk::plugins::sandbox::{ResourceLimiter, ResourceError};
+use agentic_sdk::plugins::sandbox::{ResourceError, ResourceLimiter};
 use async_trait::async_trait;
 use serde_json::Value;
 use std::time::{Duration, Instant};
@@ -19,7 +19,7 @@ pub struct UnixResourceLimiter {
 impl UnixResourceLimiter {
     pub fn new() -> Self {
         Self {
-            cpu_limit_secs: 300, // 5 minutes
+            cpu_limit_secs: 300,   // 5 minutes
             memory_limit_mb: 1024, // 1GB
             timeout_secs: 30,
         }
@@ -127,10 +127,7 @@ impl Plugin for UnixResourceLimiter {
 
 #[async_trait]
 impl ResourceLimiter for UnixResourceLimiter {
-    async fn check_cpu_limit(
-        &self,
-        current_usage: Duration,
-    ) -> Result<bool, ResourceError> {
+    async fn check_cpu_limit(&self, current_usage: Duration) -> Result<bool, ResourceError> {
         let limit = Duration::from_secs(self.cpu_limit_secs);
         Ok(current_usage < limit)
     }

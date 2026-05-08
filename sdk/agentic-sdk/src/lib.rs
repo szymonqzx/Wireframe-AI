@@ -62,7 +62,7 @@ pub use plugins::*;
 pub use registry::{ModuleMetadata, ModuleRegistry};
 pub use serialization::{
     deserialize_from_reader, from_json_slice, from_json_str, serialize_to_writer, to_compact_json,
-    to_pretty_json, JsonSerializer, JsonDeserializer,
+    to_pretty_json, JsonDeserializer, JsonSerializer,
 };
 pub use switch::{ModuleSwitchAck, ModuleSwitchCoordinator, ModuleSwitchRequest, SwitchStatus};
 
