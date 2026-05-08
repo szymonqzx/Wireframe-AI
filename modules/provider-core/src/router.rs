@@ -1,9 +1,7 @@
-use crate::{
-    Availability,
-};
-use crate::discovery::ProviderDiscoveryRegistry;
-use anyhow::Result;
 use crate::config::RoutingStrategy;
+use crate::discovery::ProviderDiscoveryRegistry;
+use crate::Availability;
+use anyhow::Result;
 use std::sync::Arc;
 
 /// Provider router with fallback logic.
@@ -14,10 +12,7 @@ pub struct ProviderRouter {
 }
 
 impl ProviderRouter {
-    pub fn new(
-        registry: Arc<ProviderDiscoveryRegistry>,
-        fallback_chain: Vec<String>,
-    ) -> Self {
+    pub fn new(registry: Arc<ProviderDiscoveryRegistry>, fallback_chain: Vec<String>) -> Self {
         Self {
             registry,
             fallback_chain,
@@ -35,7 +30,9 @@ impl ProviderRouter {
             RoutingStrategy::DefaultWithFallback => self.select_with_fallback(required_features),
             RoutingStrategy::RoundRobin => self.select_round_robin(required_features),
             RoutingStrategy::LowestCost => self.select_lowest_cost(required_features),
-            RoutingStrategy::HighestAvailability => self.select_highest_availability(required_features),
+            RoutingStrategy::HighestAvailability => {
+                self.select_highest_availability(required_features)
+            }
         }
     }
 
@@ -72,7 +69,9 @@ impl ProviderRouter {
             }
         }
 
-        Err(anyhow::anyhow!("No available provider matches requirements"))
+        Err(anyhow::anyhow!(
+            "No available provider matches requirements"
+        ))
     }
 
     fn select_round_robin(&self, required_features: &[String]) -> Result<String> {
@@ -111,7 +110,9 @@ impl ProviderRouter {
             }
         }
 
-        Err(anyhow::anyhow!("No available provider matches requirements"))
+        Err(anyhow::anyhow!(
+            "No available provider matches requirements"
+        ))
     }
 
     fn select_highest_availability(&self, required_features: &[String]) -> Result<String> {
@@ -146,6 +147,8 @@ impl ProviderRouter {
             }
         }
 
-        Err(anyhow::anyhow!("No available provider matches requirements"))
+        Err(anyhow::anyhow!(
+            "No available provider matches requirements"
+        ))
     }
 }

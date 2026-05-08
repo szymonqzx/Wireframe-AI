@@ -29,13 +29,14 @@ struct OrchestratorCoreModule {
 impl Module for OrchestratorCoreModule {
     async fn handle(&mut self, env: Envelope<Value>) -> Vec<Envelope<Value>> {
         // Deserialize TaskEnriched
-        let task: agentic_sdk::message_types::TaskEnriched = match serde_json::from_value(env.payload.clone()) {
-            Ok(t) => t,
-            Err(e) => {
-                error!(error = ?e, "failed to deserialize TaskEnriched");
-                return vec![];
-            }
-        };
+        let task: agentic_sdk::message_types::TaskEnriched =
+            match serde_json::from_value(env.payload.clone()) {
+                Ok(t) => t,
+                Err(e) => {
+                    error!(error = ?e, "failed to deserialize TaskEnriched");
+                    return vec![];
+                }
+            };
 
         // Validate session_id
         if let Err(e) = validate_session_id(&task.session_id) {
@@ -64,7 +65,10 @@ impl Module for OrchestratorCoreModule {
         // Process task through orchestrator core
         match self.core.process_task(task.clone()).await {
             Ok(complete) => {
-                vec![env.reply("task.complete", serde_json::to_value(complete).unwrap_or_default())]
+                vec![env.reply(
+                    "task.complete",
+                    serde_json::to_value(complete).unwrap_or_default(),
+                )]
             }
             Err(e) => {
                 error!(error = ?e, "failed to process task");

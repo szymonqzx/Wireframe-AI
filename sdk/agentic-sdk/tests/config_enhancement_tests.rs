@@ -1,7 +1,7 @@
 use agentic_sdk::config::PluginConfig;
 use serde_json::json;
-use std::fs;
 use std::env;
+use std::fs;
 
 #[test]
 fn test_expand_env_vars() {
@@ -24,7 +24,11 @@ modules:
     let mut config = PluginConfig::from_yaml(yaml).unwrap();
     config.expand_env_vars().unwrap();
 
-    let storage_plugin = &config.modules["test_module"].plugins.storage.as_ref().unwrap();
+    let storage_plugin = &config.modules["test_module"]
+        .plugins
+        .storage
+        .as_ref()
+        .unwrap();
     assert_eq!(storage_plugin.plugin_id, "storage-test_value");
     assert_eq!(storage_plugin.config["path"], "/path/another_value");
 
@@ -50,7 +54,11 @@ modules:
     let mut config = PluginConfig::from_yaml(yaml).unwrap();
     config.expand_env_vars().unwrap();
 
-    let storage_plugin = &config.modules["test_module"].plugins.storage.as_ref().unwrap();
+    let storage_plugin = &config.modules["test_module"]
+        .plugins
+        .storage
+        .as_ref()
+        .unwrap();
     // Missing vars should be replaced with empty string
     assert_eq!(storage_plugin.plugin_id, "storage-");
 }
@@ -81,7 +89,11 @@ modules:
     let mut config = PluginConfig::from_yaml(yaml).unwrap();
     config.expand_env_vars().unwrap();
 
-    let storage_plugin = &config.modules["test_module"].plugins.storage.as_ref().unwrap();
+    let storage_plugin = &config.modules["test_module"]
+        .plugins
+        .storage
+        .as_ref()
+        .unwrap();
     assert_eq!(storage_plugin.config["nested"]["key1"], "value1");
     assert_eq!(storage_plugin.config["nested"]["key2"], "value2");
     assert_eq!(storage_plugin.config["nested"]["array"][0], "value1");
@@ -107,7 +119,11 @@ modules:
     let mut config = PluginConfig::from_yaml(yaml).unwrap();
     config.expand_env_vars().unwrap();
 
-    let storage_plugin = &config.modules["test_module"].plugins.storage.as_ref().unwrap();
+    let storage_plugin = &config.modules["test_module"]
+        .plugins
+        .storage
+        .as_ref()
+        .unwrap();
     assert_eq!(storage_plugin.plugin_id, "storage");
 }
 
@@ -214,7 +230,7 @@ modules:
 async fn test_config_watcher() {
     let temp_dir = std::env::temp_dir();
     let config_path = temp_dir.join("test_config.yaml");
-    
+
     let yaml = r#"
 modules:
   test_module:
@@ -229,7 +245,7 @@ modules:
     fs::write(&config_path, yaml).unwrap();
 
     let watcher = agentic_sdk::config::ConfigWatcher::new(config_path.clone()).unwrap();
-    
+
     // Test that we can load the config
     let config = watcher.get_config().await;
     assert!(config.modules.contains_key("test_module"));

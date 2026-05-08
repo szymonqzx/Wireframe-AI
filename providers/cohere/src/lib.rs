@@ -243,7 +243,8 @@ impl Provider for CohereProvider {
             let tool_calls = self.extract_tool_calls(&response_json);
 
             if tool_calls.is_empty() {
-                let stream = stream::once(async move { Ok(StreamEvent::TextDelta { text: content }) });
+                let stream =
+                    stream::once(async move { Ok(StreamEvent::TextDelta { text: content }) });
                 Ok(Box::pin(stream) as EventStream)
             } else {
                 let text_stream =

@@ -2,4 +2,4 @@
 
 pub mod sandbox_core;
 
-pub use sandbox_core::{SandboxCore, WhitelistPolicy, UnixResourceLimiter};
+pub use sandbox_core::{SandboxCore, UnixResourceLimiter, WhitelistPolicy};

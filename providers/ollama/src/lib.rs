@@ -154,13 +154,10 @@ impl OllamaProvider {
             // Extract tool calls (OpenAI-compatible format)
             if let Some(calls) = json["choices"][0]["delta"]["tool_calls"].as_array() {
                 for call in calls {
-                    if let (Some(id), Some(name)) = (
-                        call["id"].as_str(),
-                        call["function"]["name"].as_str(),
-                    ) {
-                        let args = call["function"]["arguments"]
-                            .as_str()
-                            .unwrap_or("");
+                    if let (Some(id), Some(name)) =
+                        (call["id"].as_str(), call["function"]["name"].as_str())
+                    {
+                        let args = call["function"]["arguments"].as_str().unwrap_or("");
                         return Some(StreamEvent::ToolCall {
                             id: id.to_string(),
                             name: name.to_string(),
@@ -249,7 +246,8 @@ impl Provider for OllamaProvider {
             let tool_calls = self.extract_tool_calls(&response_json);
 
             if tool_calls.is_empty() {
-                let stream = stream::once(async move { Ok(StreamEvent::TextDelta { text: content }) });
+                let stream =
+                    stream::once(async move { Ok(StreamEvent::TextDelta { text: content }) });
                 Ok(Box::pin(stream) as EventStream)
             } else {
                 let text_stream =

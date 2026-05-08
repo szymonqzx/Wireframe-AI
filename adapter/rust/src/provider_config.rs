@@ -1,15 +1,15 @@
 use anyhow::Result;
-use std::path::Path;
-use wireframe_provider_core::config::{ProviderConfig, ProviderRegistryConfig};
-use wireframe_provider_openai::{OpenAIConfig, OpenAIProvider};
-use wireframe_provider_anthropic::{AnthropicConfig, AnthropicProvider};
-use wireframe_provider_google::{GeminiConfig, GeminiProvider};
-use wireframe_provider_cohere::{CohereConfig, CohereProvider};
-use wireframe_provider_ollama::{OllamaConfig, OllamaProvider};
-use wireframe_provider_core::{Provider};
-use wireframe_provider_core::discovery::ProviderDiscoveryRegistry;
-use std::sync::Arc;
 use std::env;
+use std::path::Path;
+use std::sync::Arc;
+use wireframe_provider_anthropic::{AnthropicConfig, AnthropicProvider};
+use wireframe_provider_cohere::{CohereConfig, CohereProvider};
+use wireframe_provider_core::config::{ProviderConfig, ProviderRegistryConfig};
+use wireframe_provider_core::discovery::ProviderDiscoveryRegistry;
+use wireframe_provider_core::Provider;
+use wireframe_provider_google::{GeminiConfig, GeminiProvider};
+use wireframe_provider_ollama::{OllamaConfig, OllamaProvider};
+use wireframe_provider_openai::{OpenAIConfig, OpenAIProvider};
 
 pub fn load_provider_config(config_path: Option<&Path>) -> Result<ProviderRegistryConfig> {
     if let Some(path) = config_path {
@@ -48,7 +48,8 @@ pub fn default_config_from_env() -> ProviderRegistryConfig {
         providers.push(ProviderConfig {
             name: "anthropic".to_string(),
             provider_type: "anthropic".to_string(),
-            model: env::var("ANTHROPIC_MODEL").unwrap_or_else(|_| "claude-3-5-sonnet-20241022".to_string()),
+            model: env::var("ANTHROPIC_MODEL")
+                .unwrap_or_else(|_| "claude-3-5-sonnet-20241022".to_string()),
             api_key: env::var("ANTHROPIC_API_KEY").ok(),
             base_url: env::var("ANTHROPIC_BASE_URL").ok(),
             enabled: Some(true),
@@ -154,7 +155,9 @@ pub fn default_config_from_env() -> ProviderRegistryConfig {
     }
 }
 
-pub fn build_registry_from_config(config: &ProviderRegistryConfig) -> Result<ProviderDiscoveryRegistry> {
+pub fn build_registry_from_config(
+    config: &ProviderRegistryConfig,
+) -> Result<ProviderDiscoveryRegistry> {
     let mut registry = ProviderDiscoveryRegistry::new();
 
     for provider_config in &config.providers {

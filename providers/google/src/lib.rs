@@ -175,7 +175,8 @@ impl GeminiProvider {
                     if let Some(content) = first.get("content") {
                         if let Some(parts) = content.get("parts").and_then(|p| p.as_array()) {
                             if let Some(first_part) = parts.first() {
-                                if let Some(text) = first_part.get("text").and_then(|t| t.as_str()) {
+                                if let Some(text) = first_part.get("text").and_then(|t| t.as_str())
+                                {
                                     if !text.is_empty() {
                                         return Some(StreamEvent::TextDelta {
                                             text: text.to_string(),
@@ -307,7 +308,8 @@ impl Provider for GeminiProvider {
             let tool_calls = self.extract_tool_calls(&response_json);
 
             if tool_calls.is_empty() {
-                let stream = stream::once(async move { Ok(StreamEvent::TextDelta { text: content }) });
+                let stream =
+                    stream::once(async move { Ok(StreamEvent::TextDelta { text: content }) });
                 Ok(Box::pin(stream) as EventStream)
             } else {
                 let text_stream =

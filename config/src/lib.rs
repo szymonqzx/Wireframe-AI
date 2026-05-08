@@ -6,13 +6,13 @@
 pub mod retry;
 
 use anyhow::{Context, Result};
+use notify::event::Event as NotifyEvent;
+use notify::{event::EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use notify::{RecommendedWatcher, RecursiveMode, Watcher, event::EventKind};
-use notify::event::Event as NotifyEvent;
 
 /// Main configuration structure for Wireframe-AI modules
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,9 +102,10 @@ impl ConfigManager {
 
     /// Enable hot reloading for configuration file
     pub async fn enable_hot_reload(&mut self) -> Result<()> {
-        let config_path = self.config_path.clone().ok_or_else(|| {
-            anyhow::anyhow!("No config file loaded for hot reload")
-        })?;
+        let config_path = self
+            .config_path
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("No config file loaded for hot reload"))?;
 
         let config_path_clone = config_path.clone();
         let config_path_for_spawn = config_path.clone();
@@ -125,9 +126,14 @@ impl ConfigManager {
                     }
                 },
                 notify::Config::default(),
-            ).expect("Failed to create file watcher");
+            )
+            .expect("Failed to create file watcher");
 
-            watcher.watch(Path::new(&config_path_for_spawn), RecursiveMode::NonRecursive)
+            watcher
+                .watch(
+                    Path::new(&config_path_for_spawn),
+                    RecursiveMode::NonRecursive,
+                )
                 .expect("Failed to watch config file");
 
             // Keep the watcher alive
@@ -214,5 +220,71 @@ impl WireframeConfig {
     /// Get context database path
     pub fn context_db_path(&self) -> &str {
         &self.context.db_path
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_config() {
+        let config = WireframeConfig::default();
+        assert_eq!(config.nats.url, "nats://localhost:4222");
+        assert_eq!(config.orchestrator.concurrency, 3);
+        assert_eq!(config.context.db_path, "./wireframe_ai_context.db");
+    }
+
+    #[test]
+    fn test_config_manager_new() {
+        let manager = ConfigManager::new();
+        // Since we can't easily access private fields in integration tests,
+        // but this is a unit test (mod tests inside lib.rs), we can.
+        assert!(manager.config_path.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_config_manager_get() {
+        let manager = ConfigManager::new();
+        let config = manager.get().await;
+        assert_eq!(config.nats.url, "nats://localhost:4222");
+    }
+
+    #[test]
+    fn test_config_from_file() -> Result<()> {
+        let path = "test_config_lib.toml";
+        let toml_content = r#"
+[nats]
+url = "nats://test-host:4222"
+connection_timeout_secs = 10
+max_reconnect_attempts = 5
+
+[orchestrator]
+concurrency = 5
+result_timeout_secs = 600
+
+[context]
+db_path = "./test.db"
+max_session_history = 50
+max_memory_chunks = 20
+max_context_tokens = 32768
+
+[interface]
+default_timeout_secs = 300
+show_banner = true
+"#;
+        std::fs::write(path, toml_content)?;
+
+        let result = WireframeConfig::from_file(path);
+
+        // Clean up before asserting to ensure it happens
+        let _ = std::fs::remove_file(path);
+
+        let config = result?;
+        assert_eq!(config.nats.url, "nats://test-host:4222");
+        assert_eq!(config.orchestrator.concurrency, 5);
+        assert_eq!(config.context.db_path, "./test.db");
+
+        Ok(())
     }
 }

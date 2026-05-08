@@ -1,6 +1,6 @@
 // provider-core/tests/config_test.rs
-use wireframe_provider_core::config::{ProviderConfig, ProviderRegistryConfig};
 use serde_json;
+use wireframe_provider_core::config::{ProviderConfig, ProviderRegistryConfig};
 
 #[test]
 fn test_provider_config_deserialization() {
@@ -11,7 +11,7 @@ fn test_provider_config_deserialization() {
         "api_key": "sk-test",
         "base_url": "https://api.openai.com/v1"
     }"#;
-    
+
     let config: ProviderConfig = serde_json::from_str(json).unwrap();
     assert_eq!(config.name, "openai");
     assert_eq!(config.model, "gpt-4o");
@@ -30,7 +30,7 @@ fn test_registry_config_with_fallback() {
             }
         ]
     }"#;
-    
+
     let config: ProviderRegistryConfig = serde_json::from_str(json).unwrap();
     assert_eq!(config.default_provider, "openai");
     assert_eq!(config.fallback_chain.len(), 2);

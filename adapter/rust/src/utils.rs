@@ -2,10 +2,10 @@
 //!
 //! Provides token estimation and side effect extraction utilities.
 
+use crate::ToolName;
 use std::sync::OnceLock;
 use tiktoken_rs::cl100k_base;
 use wireframe_provider_core::Message;
-use crate::ToolName;
 
 /// Get cached tokenizer (built once on first use).
 pub fn get_tokenizer() -> &'static tiktoken_rs::CoreBPE {
@@ -19,7 +19,10 @@ pub fn estimate_tokens(messages: &[Message]) -> usize {
 
     // Pre-allocate capacity to avoid reallocations
     let mut text = String::with_capacity(
-        messages.iter().map(|m| m.role.len() + m.content.len() + 3).sum::<usize>()
+        messages
+            .iter()
+            .map(|m| m.role.len() + m.content.len() + 3)
+            .sum::<usize>(),
     );
 
     for (i, m) in messages.iter().enumerate() {
@@ -35,7 +38,9 @@ pub fn estimate_tokens(messages: &[Message]) -> usize {
 }
 
 /// Extract side effects from tool invocations.
-pub fn extract_side_effects(tool_invocations: &[agentic_sdk::ToolInvocation]) -> (Vec<String>, Vec<String>) {
+pub fn extract_side_effects(
+    tool_invocations: &[agentic_sdk::ToolInvocation],
+) -> (Vec<String>, Vec<String>) {
     let files_written: Vec<String> = tool_invocations
         .iter()
         .filter(|ti| ti.tool_name == ToolName::FileWrite.as_str())

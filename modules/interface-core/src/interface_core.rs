@@ -1,8 +1,8 @@
 //! Interface core — CLI orchestration and plugin lifecycle management.
 
 use agentic_sdk::message_types::{TaskComplete, TaskSubmitted};
-use agentic_sdk::plugins::interface::{InputError, InputMethod, FormatError, OutputFormatter};
 use agentic_sdk::plugin::Plugin;
+use agentic_sdk::plugins::interface::{FormatError, InputError, InputMethod, OutputFormatter};
 use agentic_sdk::PluginRegistry;
 use serde_json::Value;
 use std::sync::Arc;
@@ -25,7 +25,10 @@ impl Plugin for DefaultCliInput {
         "Default CLI input method reading from stdin"
     }
 
-    async fn initialize(&mut self, _config: &Value) -> Result<(), agentic_sdk::plugin::PluginError> {
+    async fn initialize(
+        &mut self,
+        _config: &Value,
+    ) -> Result<(), agentic_sdk::plugin::PluginError> {
         Ok(())
     }
 
@@ -44,7 +47,8 @@ impl InputMethod for DefaultCliInput {
         println!("Enter your request (or 'quit' to exit):");
 
         let mut input = String::new();
-        std::io::stdin().read_line(&mut input)
+        std::io::stdin()
+            .read_line(&mut input)
             .map_err(|e| InputError::ReadFailed(e.to_string()))?;
 
         let input = input.trim();
@@ -77,7 +81,10 @@ impl Plugin for DefaultCliOutput {
         "Default CLI output formatter"
     }
 
-    async fn initialize(&mut self, _config: &Value) -> Result<(), agentic_sdk::plugin::PluginError> {
+    async fn initialize(
+        &mut self,
+        _config: &Value,
+    ) -> Result<(), agentic_sdk::plugin::PluginError> {
         Ok(())
     }
 
@@ -152,20 +159,21 @@ impl InterfaceCore {
         self.ensure_default_input().await;
 
         let input = self.input.read().await;
-        let input = input.as_ref().ok_or_else(|| InputError::ReadFailed("No input plugin configured".to_string()))?;
+        let input = input
+            .as_ref()
+            .ok_or_else(|| InputError::ReadFailed("No input plugin configured".to_string()))?;
         input.read_input().await
     }
 
     /// Format result using the configured output formatter.
-    pub async fn format_result(
-        &self,
-        result: &TaskComplete,
-    ) -> Result<String, FormatError> {
+    pub async fn format_result(&self, result: &TaskComplete) -> Result<String, FormatError> {
         // Ensure we have an output plugin
         self.ensure_default_output().await;
 
         let output = self.output.read().await;
-        let output = output.as_ref().ok_or_else(|| FormatError::FormattingFailed("No output plugin configured".to_string()))?;
+        let output = output.as_ref().ok_or_else(|| {
+            FormatError::FormattingFailed("No output plugin configured".to_string())
+        })?;
         output.format_result(result).await
     }
 
@@ -204,7 +212,10 @@ mod tests {
         // Test plugin trait
         assert_eq!(input.plugin_id(), "default-cli-input");
         assert_eq!(input.version(), "0.1.0");
-        assert_eq!(input.description(), "Default CLI input method reading from stdin");
+        assert_eq!(
+            input.description(),
+            "Default CLI input method reading from stdin"
+        );
 
         // Test initialization
         let mut input_clone = DefaultCliInput;

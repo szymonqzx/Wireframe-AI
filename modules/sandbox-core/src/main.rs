@@ -14,7 +14,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 use tracing::{info, warn};
-use wireframe_ai_sandbox_core::{SandboxCore, WhitelistPolicy, UnixResourceLimiter};
+use wireframe_ai_sandbox_core::{SandboxCore, UnixResourceLimiter, WhitelistPolicy};
 
 /// Minimal MCP server implementation
 struct McpServer {
@@ -224,9 +224,7 @@ impl McpServer {
             "tools/call" => {
                 // Execute a tool
                 if let Some(params) = request.params {
-                    let tool_name = params.get("name")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
+                    let tool_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
 
                     let arguments = params.get("arguments").cloned().unwrap_or(Value::Null);
 
@@ -311,13 +309,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     // Get sandbox root from environment or use temp dir
-    let sandbox_root = std::env::var("WIREFRAME_AI_SANDBOX_ROOT")
-        .unwrap_or_else(|_| {
-            std::env::temp_dir()
-                .join("wireframe-ai-sandbox")
-                .to_string_lossy()
-                .to_string()
-        });
+    let sandbox_root = std::env::var("WIREFRAME_AI_SANDBOX_ROOT").unwrap_or_else(|_| {
+        std::env::temp_dir()
+            .join("wireframe-ai-sandbox")
+            .to_string_lossy()
+            .to_string()
+    });
 
     // Create sandbox root directory
     tokio::fs::create_dir_all(&sandbox_root).await?;
@@ -333,15 +330,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         match sandbox.load_plugins_from_config(config_path).await {
             Ok(_) => info!("Plugins loaded successfully"),
             Err(e) => {
-                warn!("Failed to load plugins from config: {}, using built-in tools", e);
+                warn!(
+                    "Failed to load plugins from config: {}, using built-in tools",
+                    e
+                );
                 // Load built-in security and resource plugins as fallback
                 let default_config = serde_json::json!({
                     "allowed_paths": [sandbox_root.clone()],
                     "max_execution_time_secs": 60,
                     "max_memory_mb": 512
                 });
-                sandbox.set_security(Arc::new(WhitelistPolicy::new(&default_config))).await;
-                sandbox.set_resource_limiter(Arc::new(UnixResourceLimiter::new(&default_config))).await;
+                sandbox
+                    .set_security(Arc::new(WhitelistPolicy::new(&default_config)))
+                    .await;
+                sandbox
+                    .set_resource_limiter(Arc::new(UnixResourceLimiter::new(&default_config)))
+                    .await;
                 info!("Loaded built-in security and resource plugins");
             }
         }
@@ -353,8 +357,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "max_execution_time_secs": 60,
             "max_memory_mb": 512
         });
-        sandbox.set_security(Arc::new(WhitelistPolicy::new(&default_config))).await;
-        sandbox.set_resource_limiter(Arc::new(UnixResourceLimiter::new(&default_config))).await;
+        sandbox
+            .set_security(Arc::new(WhitelistPolicy::new(&default_config)))
+            .await;
+        sandbox
+            .set_resource_limiter(Arc::new(UnixResourceLimiter::new(&default_config)))
+            .await;
         info!("Loaded built-in security and resource plugins");
     }
 
