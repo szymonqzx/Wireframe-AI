@@ -8,3 +8,4 @@ anyhow = { workspace = true }
 crossterm = { workspace = true }
 futures-util = "0.3"
 tokio = { workspace = true }
+tui-core = { workspace = true }

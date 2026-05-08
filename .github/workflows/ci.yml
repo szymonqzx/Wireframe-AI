@@ -15,9 +15,11 @@ jobs:
 
     services:
       nats:
-        image: nats:alpine
+        image: nats:latest
+        command: ["-m", "8222"]
         ports:
           - 4222:4222
+          - 8222:8222
         options: >-
           --health-cmd "wget --spider -q http://localhost:8222/healthz || exit 1"
           --health-interval 10s

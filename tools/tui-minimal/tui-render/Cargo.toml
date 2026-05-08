@@ -8,3 +8,4 @@ anyhow = { workspace = true }
 crossterm = { workspace = true }
 ratatui = { workspace = true }
 tokio = { workspace = true }
+tui-core = { workspace = true }
