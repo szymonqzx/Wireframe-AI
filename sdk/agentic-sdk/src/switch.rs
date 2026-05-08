@@ -6,7 +6,9 @@
 use crate::compatibility::{CompatibilityChecker, CompatibilityResult};
 use crate::registry::ModuleRegistry;
 use anyhow::Result;
+use async_nats::Client;
 use serde::{Deserialize, Serialize};
+use futures::StreamExt;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{error, info, warn};
@@ -50,6 +52,7 @@ pub enum SwitchStatus {
 pub struct ModuleSwitchCoordinator {
     registry: ModuleRegistry,
     compatibility_checker: CompatibilityChecker,
+    nats_client: Option<Client>,
 }
 
 impl ModuleSwitchCoordinator {
@@ -58,6 +61,16 @@ impl ModuleSwitchCoordinator {
         Self {
             registry,
             compatibility_checker: CompatibilityChecker::new(),
+            nats_client: None,
+        }
+    }
+
+    /// Create a new module switch coordinator with NATS client.
+    pub fn with_nats_client(registry: ModuleRegistry, nats_client: Client) -> Self {
+        Self {
+            registry,
+            compatibility_checker: CompatibilityChecker::new(),
+            nats_client: Some(nats_client),
         }
     }
 
@@ -116,10 +129,12 @@ impl ModuleSwitchCoordinator {
             .start_module(&request.new_module, &new_metadata.binary_path)
             .await?;
 
-        // Wait for new module to come online
-        info!("Waiting for new module to come online");
-        // TODO: Implement NATS-based online detection
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        // Wait for new module to come online using NATS-based detection
+        info!("Waiting for new module to come online via NATS");
+        if let Err(e) = self.wait_for_module_online(&request.new_module, &new_metadata).await {
+            warn!("Failed to detect module online via NATS: {}, using fallback timeout", e);
+            tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        }
 
         Ok(ModuleSwitchAck {
             request_id,
@@ -198,6 +213,50 @@ impl ModuleSwitchCoordinator {
                 .map_err(|e| anyhow::anyhow!("Failed to start module: {}", e))?;
             Ok(child.id())
         }
+    }
+
+    /// Wait for a module to come online via NATS sys.module.online events.
+    async fn wait_for_module_online(
+        &self,
+        module_id: &str,
+        _metadata: &crate::registry::ModuleMetadata,
+    ) -> Result<()> {
+        let client = self.nats_client.as_ref()
+            .ok_or_else(|| anyhow::anyhow!("NATS client not configured for online detection"))?;
+
+        let mut subscriber = client.subscribe("sys.module.online").await
+            .map_err(|e| anyhow::anyhow!("Failed to subscribe to sys.module.online: {}", e))?;
+
+        let timeout = tokio::time::Duration::from_secs(10);
+        let start = std::time::Instant::now();
+
+        while start.elapsed() < timeout {
+            match tokio::time::timeout(
+                tokio::time::Duration::from_secs(1),
+                subscriber.next()
+            ).await {
+                Ok(Some(msg)) => {
+                    if let Ok(payload) = serde_json::from_slice::<serde_json::Value>(&msg.payload) {
+                        if let Some(online_module_id) = payload.get("module_id").and_then(|v| v.as_str()) {
+                            if online_module_id == module_id {
+                                info!(module_id, "detected module online via NATS");
+                                return Ok(());
+                            }
+                        }
+                    }
+                }
+                Ok(None) => {
+                    warn!("NATS subscription closed unexpectedly");
+                    break;
+                }
+                Err(_) => {
+                    // Timeout on individual message, continue waiting
+                    continue;
+                }
+            }
+        }
+
+        Err(anyhow::anyhow!("Timeout waiting for module {} to come online", module_id))
     }
 
     /// Rollback a failed switch.
