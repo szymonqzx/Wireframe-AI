@@ -169,7 +169,7 @@ impl Renderer {
 
         let messages_paragraph = Paragraph::new(messages_text)
             .wrap(Wrap { trim: true })
-            .scroll((state.messages.len() as u16, 0)); // Auto-scroll to bottom
+            .scroll((state.messages.len().saturating_sub(messages_area.height as usize) as u16, 0)); // Auto-scroll to bottom
 
         f.render_widget(messages_paragraph, messages_area);
 

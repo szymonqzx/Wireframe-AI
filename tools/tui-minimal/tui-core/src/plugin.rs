@@ -1,22 +1,16 @@
 //! Plugin system for the TUI
 //!
-//! Provides a trait-based plugin architecture for extending the TUI with
-//! custom event handlers and UI overlays.
-
-//! Plugin system for the TUI
-//!
-//! Provides a trait-based plugin architecture for extending the TUI with
-//! custom event handlers and UI overlays.
+//! Provides the Plugin trait and PluginManager
 
 use anyhow::Result;
 
-
-
+/// Context provided to plugins for rendering
 pub struct RenderContext<'a, 'b> {
     pub frame: &'a mut ratatui::Frame<'b>,
     pub area: ratatui::layout::Rect,
 }
 
+/// Input events routed to plugins
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PluginEvent {
     Input(char),
@@ -50,6 +44,7 @@ pub trait Plugin: Send + Sync {
     fn render(&self, ctx: &mut RenderContext) -> Result<()>;
 }
 
+/// Manages registered plugins and routes events/rendering to them
 pub struct PluginManager {
     plugins: Vec<Box<dyn Plugin>>,
 }

@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
 
     // Create input handler and buffer
     let mut input_handler = InputHandler::new();
-    let mut event_receiver = input_handler.take_receiver().unwrap();
+    let mut event_receiver = input_handler.take_receiver().expect("InputHandler should have a receiver upon creation");
     let input_buffer = Arc::new(tokio::sync::Mutex::new(InputBuffer::new()));
 
     // Spawn input handler in background
