@@ -159,6 +159,10 @@ impl SandboxCore {
                 if let Some(command) = params.get("command").and_then(|v| v.as_str()) {
                     security.validate_command(command, &context.working_dir).await?;
                 }
+            } else if tool_name == "http" {
+                if let Some(url) = params.get("url").and_then(|v| v.as_str()) {
+                    security.validate_network_access(url).await?;
+                }
             }
         }
 
