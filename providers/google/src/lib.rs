@@ -145,21 +145,6 @@ impl GeminiProvider {
             .unwrap_or_default()
     }
 
-    /// Extract usage metadata from Gemini response.
-    #[allow(dead_code)]
-    fn extract_usage(&self, response: &serde_json::Value) -> (usize, usize) {
-        let metadata = response.get("usageMetadata");
-        let prompt_tokens = metadata
-            .and_then(|m| m.get("promptTokenCount"))
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as usize;
-        let completion_tokens = metadata
-            .and_then(|m| m.get("candidatesTokenCount"))
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as usize;
-        (prompt_tokens, completion_tokens)
-    }
-
     /// Parse SSE lines from Gemini streaming response.
     pub fn parse_sse_line(&self, line: &str) -> Option<StreamEvent> {
         if let Some(data) = line.strip_prefix("data: ") {
