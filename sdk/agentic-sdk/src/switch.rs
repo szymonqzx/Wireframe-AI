@@ -263,8 +263,17 @@ impl ModuleSwitchCoordinator {
                 subscriber.next()
             ).await {
                 Ok(Some(msg)) => {
-                    if let Ok(payload) = serde_json::from_slice::<serde_json::Value>(&msg.payload) {
-                        if let Some(online_module_id) = payload.get("module_id").and_then(|v| v.as_str()) {
+                    if let Ok(envelope) = serde_json::from_slice::<serde_json::Value>(&msg.payload) {
+                        // The sys.module.online message is wrapped in an Envelope,
+                        // so module_id lives under the `payload` field. Fall back to
+                        // a top-level lookup for robustness against unwrapped messages.
+                        let online_module_id = envelope
+                            .get("payload")
+                            .and_then(|p| p.get("module_id"))
+                            .or_else(|| envelope.get("module_id"))
+                            .and_then(|v| v.as_str());
+
+                        if let Some(online_module_id) = online_module_id {
                             if online_module_id == module_id {
                                 info!(module_id, "detected module online via NATS");
                                 return Ok(());
