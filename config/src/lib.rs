@@ -6,13 +6,13 @@
 pub mod retry;
 
 use anyhow::{Context, Result};
+use notify::event::Event as NotifyEvent;
+use notify::{event::EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use notify::{RecommendedWatcher, RecursiveMode, Watcher, event::EventKind};
-use notify::event::Event as NotifyEvent;
 
 /// Main configuration structure for Wireframe-AI modules
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,9 +102,10 @@ impl ConfigManager {
 
     /// Enable hot reloading for configuration file
     pub async fn enable_hot_reload(&mut self) -> Result<()> {
-        let config_path = self.config_path.clone().ok_or_else(|| {
-            anyhow::anyhow!("No config file loaded for hot reload")
-        })?;
+        let config_path = self
+            .config_path
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("No config file loaded for hot reload"))?;
 
         let config_path_clone = config_path.clone();
         let config_path_for_spawn = config_path.clone();
@@ -125,9 +126,14 @@ impl ConfigManager {
                     }
                 },
                 notify::Config::default(),
-            ).expect("Failed to create file watcher");
+            )
+            .expect("Failed to create file watcher");
 
-            watcher.watch(Path::new(&config_path_for_spawn), RecursiveMode::NonRecursive)
+            watcher
+                .watch(
+                    Path::new(&config_path_for_spawn),
+                    RecursiveMode::NonRecursive,
+                )
                 .expect("Failed to watch config file");
 
             // Keep the watcher alive

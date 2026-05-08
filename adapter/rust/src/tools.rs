@@ -3,11 +3,13 @@
 //! Provides modular tool execution with consistent error handling and response formatting.
 
 use serde_json::Value;
-use std::path::PathBuf;
 use std::env;
+use std::path::PathBuf;
 use tracing::warn;
 
-use crate::security::{sanitize_string, validate_path, validate_path_for_write, validate_shell_command};
+use crate::security::{
+    sanitize_string, validate_path, validate_path_for_write, validate_shell_command,
+};
 use wireframe_provider_core::ToolDefinition;
 
 /// Tool names enum to prevent magic string typos.
@@ -130,7 +132,11 @@ fn detect_platform_shell() -> (String, String) {
 }
 
 /// Execute shell command.
-pub async fn execute_shell(command: &str, working_dir: Option<&str>, _ctx: &ToolContext<'_>) -> Value {
+pub async fn execute_shell(
+    command: &str,
+    working_dir: Option<&str>,
+    _ctx: &ToolContext<'_>,
+) -> Value {
     if command.is_empty() {
         return missing_param_response("command");
     }
@@ -154,7 +160,7 @@ pub async fn execute_shell(command: &str, working_dir: Option<&str>, _ctx: &Tool
                         "exit_code": output.status.code().unwrap_or(-1)
                     })
                 }
-                Err(e) => error_response(&format!("Command execution failed: {}", e))
+                Err(e) => error_response(&format!("Command execution failed: {}", e)),
             }
         }
         Err(e) => {
@@ -171,19 +177,20 @@ pub async fn read_file(path: &str, ctx: &ToolContext<'_>) -> Value {
     }
 
     let sanitized = sanitize_string(path);
-    match validate_path(sanitized.as_ref(), ctx.allowed_base_dir.map(|p| p.as_path())) {
-        Ok(validated_path) => {
-            match tokio::fs::read_to_string(&validated_path).await {
-                Ok(content) => {
-                    serde_json::json!({
-                        "success": true,
-                        "content": content,
-                        "path": validated_path.to_string_lossy().to_string()
-                    })
-                }
-                Err(e) => error_response(&format!("Failed to read file: {}", e))
+    match validate_path(
+        sanitized.as_ref(),
+        ctx.allowed_base_dir.map(|p| p.as_path()),
+    ) {
+        Ok(validated_path) => match tokio::fs::read_to_string(&validated_path).await {
+            Ok(content) => {
+                serde_json::json!({
+                    "success": true,
+                    "content": content,
+                    "path": validated_path.to_string_lossy().to_string()
+                })
             }
-        }
+            Err(e) => error_response(&format!("Failed to read file: {}", e)),
+        },
         Err(e) => {
             warn!("Path validation failed: {}", e);
             error_response(&format!("Path validation failed: {}", e))
@@ -202,7 +209,10 @@ pub async fn write_file(path: &str, content: &str, ctx: &ToolContext<'_>) -> Val
 
     let sanitized_path = sanitize_string(path);
     let sanitized_content = sanitize_string(content);
-    match validate_path_for_write(sanitized_path.as_ref(), ctx.allowed_base_dir.map(|p| p.as_path())) {
+    match validate_path_for_write(
+        sanitized_path.as_ref(),
+        ctx.allowed_base_dir.map(|p| p.as_path()),
+    ) {
         Ok(validated_path) => {
             match tokio::fs::write(&validated_path, sanitized_content.as_ref()).await {
                 Ok(_) => {
@@ -211,7 +221,7 @@ pub async fn write_file(path: &str, content: &str, ctx: &ToolContext<'_>) -> Val
                         "path": validated_path.to_string_lossy().to_string()
                     })
                 }
-                Err(e) => error_response(&format!("Failed to write file: {}", e))
+                Err(e) => error_response(&format!("Failed to write file: {}", e)),
             }
         }
         Err(e) => {
@@ -228,28 +238,29 @@ pub async fn list_directory(path: &str, ctx: &ToolContext<'_>) -> Value {
     }
 
     let sanitized = sanitize_string(path);
-    match validate_path(sanitized.as_ref(), ctx.allowed_base_dir.map(|p| p.as_path())) {
-        Ok(validated_path) => {
-            match tokio::fs::read_dir(&validated_path).await {
-                Ok(mut entries) => {
-                    let mut files = Vec::new();
-                    while let Ok(Some(entry)) = entries.next_entry().await {
-                        let metadata = entry.metadata().await;
-                        let is_dir = metadata.as_ref().map(|m| m.is_dir()).unwrap_or(false);
-                        files.push(serde_json::json!({
-                            "name": entry.file_name().to_string_lossy().to_string(),
-                            "is_directory": is_dir
-                        }));
-                    }
-                    serde_json::json!({
-                        "success": true,
-                        "path": validated_path.to_string_lossy().to_string(),
-                        "files": files
-                    })
+    match validate_path(
+        sanitized.as_ref(),
+        ctx.allowed_base_dir.map(|p| p.as_path()),
+    ) {
+        Ok(validated_path) => match tokio::fs::read_dir(&validated_path).await {
+            Ok(mut entries) => {
+                let mut files = Vec::new();
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    let metadata = entry.metadata().await;
+                    let is_dir = metadata.as_ref().map(|m| m.is_dir()).unwrap_or(false);
+                    files.push(serde_json::json!({
+                        "name": entry.file_name().to_string_lossy().to_string(),
+                        "is_directory": is_dir
+                    }));
                 }
-                Err(e) => error_response(&format!("Failed to list directory: {}", e))
+                serde_json::json!({
+                    "success": true,
+                    "path": validated_path.to_string_lossy().to_string(),
+                    "files": files
+                })
             }
-        }
+            Err(e) => error_response(&format!("Failed to list directory: {}", e)),
+        },
         Err(e) => {
             warn!("Path validation failed: {}", e);
             error_response(&format!("Path validation failed: {}", e))
@@ -399,5 +410,3 @@ pub fn build_tool_definitions() -> Vec<ToolDefinition> {
         },
     ]
 }
-
-

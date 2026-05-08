@@ -225,7 +225,7 @@ impl Provider for AnthropicProvider {
         _session_id: Option<&str>,
     ) -> Result<EventStream> {
         let use_streaming = self.should_stream();
-        
+
         let (system_prompt, anthropic_messages) = self.build_messages(messages, system);
 
         let mut request_body = serde_json::json!({
@@ -264,12 +264,12 @@ impl Provider for AnthropicProvider {
         if use_streaming {
             let body_bytes = response.bytes().await?;
             let text = String::from_utf8_lossy(&body_bytes);
-            
+
             let events: Vec<StreamEvent> = text
                 .lines()
                 .filter_map(|line| self.parse_sse_line(line))
                 .collect();
-            
+
             let stream = stream::iter(events).map(|event| Ok(event));
             Ok(Box::pin(stream) as EventStream)
         } else {
@@ -278,7 +278,8 @@ impl Provider for AnthropicProvider {
             let tool_calls = self.extract_tool_calls(&response_json);
 
             if tool_calls.is_empty() {
-                let stream = stream::once(async move { Ok(StreamEvent::TextDelta { text: content }) });
+                let stream =
+                    stream::once(async move { Ok(StreamEvent::TextDelta { text: content }) });
                 Ok(Box::pin(stream) as EventStream)
             } else {
                 let text_stream =

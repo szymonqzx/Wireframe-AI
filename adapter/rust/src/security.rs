@@ -162,17 +162,17 @@ pub fn validate_path_for_write(path: &str, allowed_base: Option<&Path>) -> Resul
 pub fn sanitize_string(input: &str) -> std::borrow::Cow<'_, str> {
     // Fast path: check if sanitization is needed
     let needs_sanitization = input.chars().any(|c| c == '\0' || c.is_control());
-    
+
     if !needs_sanitization {
         return std::borrow::Cow::Borrowed(input);
     }
-    
+
     // Slow path: allocate and sanitize
     std::borrow::Cow::Owned(
         input
             .chars()
             .filter(|c| *c != '\0' && !c.is_control())
-            .collect()
+            .collect(),
     )
 }
 

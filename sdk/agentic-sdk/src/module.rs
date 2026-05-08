@@ -7,10 +7,10 @@
 use crate::envelope::Envelope;
 use async_nats::Client;
 use serde_json::Value;
-use tracing::info;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
+use tracing::info;
 
 /// Simple buffer pool for reducing allocations in message batching
 struct BufferPool {
@@ -181,31 +181,33 @@ pub async fn publish_errors_batch(
     if errors.is_empty() {
         return Ok(());
     }
-    
+
     let timestamp = chrono::Utc::now().timestamp();
     let nc = nc.clone();
-    
+
     // Publish all errors concurrently using join_all for better efficiency
-    let futs: Vec<_> = errors.into_iter().filter_map(|(module_id, error_code, error_message)| {
-        let payload = serde_json::json!({
-            "module_id": module_id,
-            "error_code": error_code,
-            "error_message": error_message,
-            "ts": timestamp,
-        });
-        let env = Envelope::new("sys.module.error", payload, None);
-        let nc = nc.clone();
-        env.to_bytes().ok().map(|data| {
-            async move {
+    let futs: Vec<_> = errors
+        .into_iter()
+        .filter_map(|(module_id, error_code, error_message)| {
+            let payload = serde_json::json!({
+                "module_id": module_id,
+                "error_code": error_code,
+                "error_message": error_message,
+                "ts": timestamp,
+            });
+            let env = Envelope::new("sys.module.error", payload, None);
+            let nc = nc.clone();
+            env.to_bytes().ok().map(|data| async move {
                 let _ = nc.publish("sys.module.error", data.into()).await;
-            }
+            })
         })
-    }).collect();
-    
+        .collect();
+
     let _ = tokio::spawn(async move {
         futures::future::join_all(futs).await;
-    }).await;
-    
+    })
+    .await;
+
     Ok(())
 }
 
@@ -219,19 +221,23 @@ pub async fn publish_envelopes_batch(
     if envelopes.is_empty() {
         return Ok(());
     }
-    
+
     let nc = nc.clone();
-    let futs: Vec<_> = envelopes.into_iter().map(|(subject, data)| {
-        let nc = nc.clone();
-        async move {
-            let _ = nc.publish(subject, data.into()).await;
-        }
-    }).collect();
-    
+    let futs: Vec<_> = envelopes
+        .into_iter()
+        .map(|(subject, data)| {
+            let nc = nc.clone();
+            async move {
+                let _ = nc.publish(subject, data.into()).await;
+            }
+        })
+        .collect();
+
     let _ = tokio::spawn(async move {
         futures::future::join_all(futs).await;
-    }).await;
-    
+    })
+    .await;
+
     Ok(())
 }
 
@@ -253,7 +259,7 @@ impl MessageBuffer {
         let buffer_clone = buffer.clone();
         let nc_clone = nc.clone();
         let buffer_pool = Arc::new(BufferPool::new(16));
-        
+
         // Start background flush task
         let buffer_pool_clone = buffer_pool.clone();
         let flush_task = tokio::spawn(async move {
@@ -263,7 +269,7 @@ impl MessageBuffer {
                 Self::flush_buffer(&buffer_clone, &nc_clone, &buffer_pool_clone).await;
             }
         });
-        
+
         Self {
             buffer,
             max_size,
@@ -273,7 +279,7 @@ impl MessageBuffer {
             buffer_pool,
         }
     }
-    
+
     /// Add a message to the buffer. Flushes if buffer is full.
     #[inline]
     pub async fn publish(&self, subject: String, data: Vec<u8>) {
@@ -301,7 +307,7 @@ impl MessageBuffer {
             });
         }
     }
-    
+
     /// Manually flush the buffer.
     #[inline]
     pub async fn flush(&self) {
@@ -345,13 +351,13 @@ impl MessageBuffer {
             pool_clone.release(messages);
         });
     }
-    
+
     /// Get current buffer size.
     #[inline]
     pub async fn size(&self) -> usize {
         self.buffer.lock().await.len()
     }
-    
+
     /// Check if buffer is empty.
     #[inline]
     pub async fn is_empty(&self) -> bool {
@@ -392,17 +398,21 @@ impl EnvelopePublisher {
             enable_buffering: false,
         }
     }
-    
+
     /// Enable message buffering with specified parameters.
     pub fn with_buffering(mut self, max_size: usize, max_age: Duration) -> Self {
         self.buffer = Some(MessageBuffer::new(self.nc.clone(), max_size, max_age));
         self.enable_buffering = true;
         self
     }
-    
+
     /// Publish an envelope immediately (bypasses buffer).
     #[inline]
-    pub async fn publish_immediate<T>(&self, subject: String, envelope: &Envelope<T>) -> Result<(), Box<dyn std::error::Error>>
+    pub async fn publish_immediate<T>(
+        &self,
+        subject: String,
+        envelope: &Envelope<T>,
+    ) -> Result<(), Box<dyn std::error::Error>>
     where
         T: serde::Serialize,
     {
@@ -410,24 +420,28 @@ impl EnvelopePublisher {
         self.nc.publish(subject, data.into()).await?;
         Ok(())
     }
-    
+
     /// Publish an envelope (uses buffer if enabled).
     #[inline]
-    pub async fn publish<T>(&self, subject: String, envelope: &Envelope<T>) -> Result<(), Box<dyn std::error::Error>>
+    pub async fn publish<T>(
+        &self,
+        subject: String,
+        envelope: &Envelope<T>,
+    ) -> Result<(), Box<dyn std::error::Error>>
     where
         T: serde::Serialize,
     {
         let data = envelope.to_bytes()?;
-        
+
         if let Some(buffer) = &self.buffer {
             buffer.publish(subject, data).await;
         } else {
             self.nc.publish(subject, data.into()).await?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Flush the buffer if enabled.
     #[inline]
     pub async fn flush(&self) {
@@ -435,7 +449,7 @@ impl EnvelopePublisher {
             buffer.flush().await;
         }
     }
-    
+
     /// Get buffer size if buffering is enabled.
     #[inline]
     pub async fn buffer_size(&self) -> Option<usize> {

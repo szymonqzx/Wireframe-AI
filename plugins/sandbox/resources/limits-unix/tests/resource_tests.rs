@@ -1,8 +1,8 @@
 //! Tests for the Unix resource limiter plugin.
 
-use limits_unix::UnixResourceLimiter;
-use agentic_sdk::Plugin;
 use agentic_sdk::plugins::sandbox::ResourceLimiter;
+use agentic_sdk::Plugin;
+use limits_unix::UnixResourceLimiter;
 use std::time::{Duration, Instant};
 
 #[tokio::test]

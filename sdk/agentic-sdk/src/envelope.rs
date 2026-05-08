@@ -153,14 +153,16 @@ impl<T> Envelope<T> {
     where
         T: serde::de::DeserializeOwned,
     {
-        serde_json::from_slice(bytes).map_err(|e| EnvelopeError::DeserializationError(e.to_string()))
+        serde_json::from_slice(bytes)
+            .map_err(|e| EnvelopeError::DeserializationError(e.to_string()))
     }
 
     /// Zero-copy view of envelope from bytes using serde_json::Value
     /// This avoids full deserialization when you only need to inspect fields
     #[inline]
     pub fn from_bytes_view(bytes: &[u8]) -> Result<Envelope<serde_json::Value>, EnvelopeError> {
-        serde_json::from_slice(bytes).map_err(|e| EnvelopeError::DeserializationError(e.to_string()))
+        serde_json::from_slice(bytes)
+            .map_err(|e| EnvelopeError::DeserializationError(e.to_string()))
     }
 
     /// Extract payload as JSON value without full deserialization
@@ -170,7 +172,8 @@ impl<T> Envelope<T> {
     where
         T: serde::Serialize,
     {
-        serde_json::to_value(&self.payload).map_err(|e| EnvelopeError::SerializationError(e.to_string()))
+        serde_json::to_value(&self.payload)
+            .map_err(|e| EnvelopeError::SerializationError(e.to_string()))
     }
 
     /// Convert envelope to envelope with different payload type using JSON conversion
@@ -185,7 +188,7 @@ impl<T> Envelope<T> {
             .map_err(|e| EnvelopeError::SerializationError(e.to_string()))?;
         let new_payload = serde_json::from_value(payload_value)
             .map_err(|e| EnvelopeError::DeserializationError(e.to_string()))?;
-        
+
         Ok(Envelope {
             message_id: self.message_id,
             session_id: self.session_id,
@@ -284,7 +287,7 @@ fn evict_if_needed(cache: &dashmap::DashMap<String, jsonschema::JSONSchema>) {
             .take(cache.len() - MAX_SCHEMA_CACHE_SIZE + 100) // Remove 100 extra to avoid frequent evictions
             .map(|entry| entry.key().clone())
             .collect();
-        
+
         for key in keys_to_remove {
             cache.remove(&key);
         }

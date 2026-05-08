@@ -1,6 +1,6 @@
 // providers/openai/tests/streaming_test.rs
-use wireframe_provider_openai::{OpenAIProvider, OpenAIConfig};
 use wireframe_provider_core::{Message, Provider};
+use wireframe_provider_openai::{OpenAIConfig, OpenAIProvider};
 
 #[tokio::test]
 async fn test_streaming_enabled() {
@@ -11,13 +11,13 @@ async fn test_streaming_enabled() {
         stream: Some(true),
     };
     let provider = OpenAIProvider::new(config);
-    
+
     let messages = vec![Message {
         role: "user".to_string(),
         content: "Hello".to_string(),
         tool_call_id: None,
     }];
-    
+
     let result = provider.complete(&messages, &[], "", None).await;
     assert!(result.is_err() || result.is_ok());
 }

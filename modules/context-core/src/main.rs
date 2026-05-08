@@ -41,13 +41,14 @@ impl Module for ContextCoreModule {
 impl ContextCoreModule {
     async fn handle_task_submitted(&self, env: Envelope<Value>) -> Vec<Envelope<Value>> {
         // Deserialize TaskSubmitted
-        let task: agentic_sdk::message_types::TaskSubmitted = match serde_json::from_value(env.payload.clone()) {
-            Ok(t) => t,
-            Err(e) => {
-                error!(error = ?e, "failed to deserialize TaskSubmitted");
-                return vec![];
-            }
-        };
+        let task: agentic_sdk::message_types::TaskSubmitted =
+            match serde_json::from_value(env.payload.clone()) {
+                Ok(t) => t,
+                Err(e) => {
+                    error!(error = ?e, "failed to deserialize TaskSubmitted");
+                    return vec![];
+                }
+            };
 
         info!(session = %task.session_id, "processing task.submitted");
 
@@ -65,7 +66,10 @@ impl ContextCoreModule {
         // Process task
         match self.core.handle_task(task, typed_envelope).await {
             Ok(enriched) => {
-                vec![env.reply("task.enriched", serde_json::to_value(enriched).unwrap_or_default())]
+                vec![env.reply(
+                    "task.enriched",
+                    serde_json::to_value(enriched).unwrap_or_default(),
+                )]
             }
             Err(e) => {
                 error!(error = ?e, "failed to handle task");
@@ -76,13 +80,14 @@ impl ContextCoreModule {
 
     async fn handle_task_complete(&self, env: Envelope<Value>) -> Vec<Envelope<Value>> {
         // Deserialize TaskComplete
-        let complete: agentic_sdk::message_types::TaskComplete = match serde_json::from_value(env.payload.clone()) {
-            Ok(c) => c,
-            Err(e) => {
-                error!(error = ?e, "failed to deserialize TaskComplete");
-                return vec![];
-            }
-        };
+        let complete: agentic_sdk::message_types::TaskComplete =
+            match serde_json::from_value(env.payload.clone()) {
+                Ok(c) => c,
+                Err(e) => {
+                    error!(error = ?e, "failed to deserialize TaskComplete");
+                    return vec![];
+                }
+            };
 
         info!(session = %complete.session_id, "persisting task.complete as memory");
 
