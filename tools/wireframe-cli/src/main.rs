@@ -1985,6 +1985,7 @@ fn handle_module_start(name: &str, build_mode: &str, nats_url: &str) -> anyhow::
         cmd.arg("--release");
     }
     cmd.arg("-p").arg(name);
+    cmd.env("WIREFRAME_AI_NATS_URL", nats_url);
 
     if let Err(e) = cmd.spawn() {
         return Err(anyhow::anyhow!("Failed to start module {}: {}", name, e));
