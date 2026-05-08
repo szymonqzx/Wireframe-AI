@@ -21,4 +21,20 @@ async fn test_tool_http_input_schema() {
     let tool = HttpTool::new();
     let schema = tool.input_schema();
     assert!(schema.is_object());
+    assert!(schema["properties"].get("url").is_some());
+    assert!(schema["properties"].get("headers").is_some());
+    assert!(schema["properties"].get("body").is_some());
+}
+
+#[tokio::test]
+async fn test_tool_http_execute_missing_url() {
+    let tool = HttpTool::new();
+    let ctx = agentic_sdk::plugins::sandbox::SandboxContext {
+        working_dir: "/tmp".to_string(),
+        environment: vec![],
+        allowed_paths: vec![],
+    };
+    let params = serde_json::json!({});
+    let result = tool.execute(params, &ctx).await;
+    assert!(result.is_err());
 }

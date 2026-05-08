@@ -114,3 +114,65 @@ where
     };
     retry_with_backoff(config, operation).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    #[tokio::test]
+    async fn test_retry_with_backoff_success() {
+        let config = RetryConfig::default();
+        let result = retry_with_backoff(config, || async {
+            Ok::<u32, std::io::Error>(42)
+        }).await;
+
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[tokio::test]
+    async fn test_retry_with_backoff_retry_success() {
+        let config = RetryConfig {
+            max_attempts: 3,
+            initial_delay: Duration::from_millis(1),
+            backoff_multiplier: 1.0,
+            max_delay: Duration::from_millis(5),
+        };
+        let attempts = Arc::new(AtomicU32::new(0));
+        let attempts_clone = attempts.clone();
+
+        let result = retry_with_backoff(config, move || {
+            let attempts_clone = attempts_clone.clone();
+            async move {
+                let current = attempts_clone.fetch_add(1, Ordering::SeqCst);
+                if current < 2 {
+                    Err(std::io::Error::new(std::io::ErrorKind::Other, "failure"))
+                } else {
+                    Ok(42)
+                }
+            }
+        }).await;
+
+        assert_eq!(result.unwrap(), 42);
+        assert_eq!(attempts.load(Ordering::SeqCst), 3);
+    }
+
+    #[tokio::test]
+    async fn test_retry_with_backoff_failure() {
+        let config = RetryConfig {
+            max_attempts: 2,
+            initial_delay: Duration::from_millis(1),
+            backoff_multiplier: 1.0,
+            max_delay: Duration::from_millis(5),
+        };
+
+        let result = retry_with_backoff(config, || async {
+            Err::<u32, _>(std::io::Error::new(std::io::ErrorKind::Other, "permanent failure"))
+        }).await;
+
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Operation failed after 2 attempts"));
+        assert!(err.contains("permanent failure"));
+    }
+}

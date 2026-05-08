@@ -4,6 +4,8 @@ use agentic_sdk::plugins::context::{EnrichmentStrategy, MemoryBackend, StorageBa
 use std::sync::Arc;
 use std::path::PathBuf;
 use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{RwLock, Semaphore};
 use tracing::{error, info};
@@ -13,7 +15,7 @@ use tracing::{error, info};
 struct CacheEntry<T> {
     value: T,
     accessed_at: Instant,
-    version: u64,  // For cache invalidation
+    version: u64, // For cache invalidation
 }
 
 impl<T> CacheEntry<T> {
@@ -79,7 +81,7 @@ struct LruCache<T> {
     entries: HashMap<String, CacheEntry<T>>,
     max_size: usize,
     ttl: Duration,
-    global_version: Arc<std::sync::atomic::AtomicU64>,  // Global version for invalidation
+    global_version: Arc<std::sync::atomic::AtomicU64>, // Global version for invalidation
     invalidation_strategy: InvalidationStrategy,
 }
 
@@ -139,7 +141,11 @@ impl<T: Clone> LruCache<T> {
     }
 
     #[inline]
-    fn new_with_invalidation(max_size: usize, ttl: Duration, strategy: InvalidationStrategy) -> Self {
+    fn new_with_invalidation(
+        max_size: usize,
+        ttl: Duration,
+        strategy: InvalidationStrategy,
+    ) -> Self {
         Self {
             entries: HashMap::with_capacity(max_size),
             max_size,
@@ -179,7 +185,8 @@ impl<T: Clone> LruCache<T> {
     fn put(&mut self, key: String, value: T) {
         // Evict if at capacity
         if self.entries.len() >= self.max_size {
-            if let Some(oldest_key) = self.entries
+            if let Some(oldest_key) = self
+                .entries
                 .iter()
                 .min_by_key(|(_, entry)| entry.accessed_at)
                 .map(|(k, _)| k.clone())
@@ -206,7 +213,8 @@ impl<T: Clone> LruCache<T> {
 
     #[inline]
     fn invalidate_all(&mut self) {
-        self.global_version.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.global_version
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     }
 
     #[inline]
@@ -218,7 +226,8 @@ impl<T: Clone> LruCache<T> {
 
     #[inline]
     fn global_version(&self) -> u64 {
-        self.global_version.load(std::sync::atomic::Ordering::SeqCst)
+        self.global_version
+            .load(std::sync::atomic::Ordering::SeqCst)
     }
 
     #[inline]
@@ -270,7 +279,7 @@ impl ContextCore {
             enrichment_cache: Arc::new(RwLock::new(LruCache::new(cache_size, cache_ttl))),
             string_interner: Arc::new(RwLock::new(StringInterner::new(interner_size))),
             storage_semaphore: Arc::new(Semaphore::new(10)), // Max 10 concurrent storage ops
-            memory_semaphore: Arc::new(Semaphore::new(10)), // Max 10 concurrent memory ops
+            memory_semaphore: Arc::new(Semaphore::new(10)),  // Max 10 concurrent memory ops
         }
     }
 

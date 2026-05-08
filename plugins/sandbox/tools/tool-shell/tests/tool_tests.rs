@@ -1,9 +1,9 @@
 //! Tests for the shell tool plugin.
 
-use tool_shell::ShellTool;
+use agentic_sdk::plugins::sandbox::{SandboxContext, Tool};
 use agentic_sdk::Plugin;
-use agentic_sdk::plugins::sandbox::{Tool, SandboxContext};
 use serde_json::json;
+use tool_shell::ShellTool;
 
 #[tokio::test]
 async fn test_tool_shell_input_schema() {

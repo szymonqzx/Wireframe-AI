@@ -7,10 +7,10 @@
 use crate::envelope::Envelope;
 use async_nats::Client;
 use serde_json::Value;
-use tracing::info;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
+use tracing::info;
 
 type MessageBufferInner = Vec<(String, Vec<u8>)>;
 
@@ -407,7 +407,11 @@ impl EnvelopePublisher {
 
     /// Publish an envelope immediately (bypasses buffer).
     #[inline]
-    pub async fn publish_immediate<T>(&self, subject: String, envelope: &Envelope<T>) -> Result<(), Box<dyn std::error::Error>>
+    pub async fn publish_immediate<T>(
+        &self,
+        subject: String,
+        envelope: &Envelope<T>,
+    ) -> Result<(), Box<dyn std::error::Error>>
     where
         T: serde::Serialize,
     {
@@ -418,7 +422,11 @@ impl EnvelopePublisher {
 
     /// Publish an envelope (uses buffer if enabled).
     #[inline]
-    pub async fn publish<T>(&self, subject: String, envelope: &Envelope<T>) -> Result<(), Box<dyn std::error::Error>>
+    pub async fn publish<T>(
+        &self,
+        subject: String,
+        envelope: &Envelope<T>,
+    ) -> Result<(), Box<dyn std::error::Error>>
     where
         T: serde::Serialize,
     {

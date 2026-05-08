@@ -9,8 +9,8 @@
 //! Subscribes to: task.complete
 //! Publishes to: task.submitted
 
+use agentic_sdk::plugins::interface::{FormatError, InputError};
 use agentic_sdk::{Envelope, Module};
-use agentic_sdk::plugins::interface::{InputError, FormatError};
 use async_nats::Client;
 use serde_json::Value;
 use std::sync::Arc;
@@ -34,13 +34,14 @@ struct InterfaceCoreModule {
 impl Module for InterfaceCoreModule {
     async fn handle(&mut self, env: Envelope<Value>) -> Vec<Envelope<Value>> {
         // Deserialize TaskComplete
-        let complete: agentic_sdk::message_types::TaskComplete = match serde_json::from_value(env.payload.clone()) {
-            Ok(c) => c,
-            Err(e) => {
-                error!(error = ?e, "failed to deserialize TaskComplete");
-                return vec![];
-            }
-        };
+        let complete: agentic_sdk::message_types::TaskComplete =
+            match serde_json::from_value(env.payload.clone()) {
+                Ok(c) => c,
+                Err(e) => {
+                    error!(error = ?e, "failed to deserialize TaskComplete");
+                    return vec![];
+                }
+            };
 
         info!(session = %complete.session_id, "received task.complete");
 
@@ -65,9 +66,16 @@ impl Module for InterfaceCoreModule {
 }
 
 impl InterfaceCoreModule {
-    async fn publish_task_submitted(&self, task: agentic_sdk::message_types::TaskSubmitted) -> Result<(), Box<dyn std::error::Error>> {
+    async fn publish_task_submitted(
+        &self,
+        task: agentic_sdk::message_types::TaskSubmitted,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(client) = &self.nats_client {
-            let envelope = Envelope::new("task.submitted", task.clone(), Some(task.session_id.clone()));
+            let envelope = Envelope::new(
+                "task.submitted",
+                task.clone(),
+                Some(task.session_id.clone()),
+            );
             let payload = serde_json::to_string(&envelope)?;
             client.publish("task.submitted", payload.into()).await?;
             info!(session = %task.session_id, "published task.submitted");
@@ -171,7 +179,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Connected to NATS at {}", nats_url);
 
     // Create channel for CLI loop to send tasks to NATS module
-    let (task_sender, mut task_receiver) = mpsc::channel::<agentic_sdk::message_types::TaskSubmitted>(32);
+    let (task_sender, mut task_receiver) =
+        mpsc::channel::<agentic_sdk::message_types::TaskSubmitted>(32);
 
     // Create module with NATS client
     let mut module = InterfaceCoreModule {
@@ -193,7 +202,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client_clone = client.clone();
     let publish_handle = tokio::spawn(async move {
         while let Some(task) = task_receiver.recv().await {
-            let envelope = Envelope::new("task.submitted", task.clone(), Some(task.session_id.clone()));
+            let envelope = Envelope::new(
+                "task.submitted",
+                task.clone(),
+                Some(task.session_id.clone()),
+            );
             if let Ok(payload) = serde_json::to_string(&envelope) {
                 if let Err(e) = client_clone.publish("task.submitted", payload.into()).await {
                     error!(error = ?e, "failed to publish task.submitted from CLI");
