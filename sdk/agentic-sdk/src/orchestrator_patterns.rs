@@ -11,7 +11,14 @@ use std::collections::HashMap;
 /// Fan-out pattern: split one task into N parallel jobs.
 pub fn fan_out(enriched: &TaskEnriched, sub_tasks: Vec<String>) -> Vec<Envelope<AgentJob>> {
     let mut jobs = Vec::with_capacity(sub_tasks.len());
-    for (idx, sub_task) in sub_tasks.iter().enumerate() {
+    let session_id = Some(enriched.session_id.clone());
+    let metadata = crate::message_types::JobMetadata {
+        submitter: "orchestrator".to_string(),
+        priority: 5,
+        tags: [("workflow".to_string(), "fan_out".to_string())].into(),
+    };
+
+    for (idx, sub_task) in sub_tasks.into_iter().enumerate() {
         let job = AgentJob {
             job_id: format!("{}-{}", enriched.correlation_id, idx),
             correlation_parent: enriched.correlation_id.clone(),
@@ -19,7 +26,7 @@ pub fn fan_out(enriched: &TaskEnriched, sub_tasks: Vec<String>) -> Vec<Envelope<
                 user_input: sub_task.clone(),
                 sub_task: Some(crate::message_types::SubTask {
                     title: format!("subtask-{}", idx),
-                    description: sub_task.clone(),
+                    description: sub_task,
                     expected_artifacts: vec![],
                 }),
                 output_format: None,
@@ -29,18 +36,14 @@ pub fn fan_out(enriched: &TaskEnriched, sub_tasks: Vec<String>) -> Vec<Envelope<
             available_tool_capabilities: vec![],
             constraints: Default::default(),
             model_config: Default::default(),
-            metadata: crate::message_types::JobMetadata {
-                submitter: "orchestrator".to_string(),
-                priority: 5,
-                tags: [("workflow".to_string(), "fan_out".to_string())].into(),
-            },
+            metadata: metadata.clone(),
             adapter_hints: None,
             schema_version: 1,
         };
         jobs.push(Envelope::new(
             "agent.job",
             job,
-            Some(enriched.session_id.clone()),
+            session_id.clone(),
         ));
     }
     jobs
