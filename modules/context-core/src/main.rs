@@ -12,7 +12,7 @@
 use agentic_sdk::{Envelope, Module};
 use serde_json::Value;
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use wireframe_ai_context_core::ContextCore;
 use wireframe_config::WireframeConfig;
 
