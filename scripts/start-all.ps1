@@ -183,7 +183,17 @@ if (-not $SkipBuild) {
         @{ name = "wireframe-ai-context-core"; path = "modules/context-core" },
         @{ name = "wireframe-ai-orchestrator-core"; path = "modules/orchestrator-core" },
         @{ name = "wireframe-ai-sandbox-core"; path = "modules/sandbox-core" },
-        @{ name = "tui-main"; path = "tools/tui-minimal" }
+        @{ name = "wireframe-ai-event-sourcing-core"; path = "modules/event-sourcing-core" },
+        @{ name = "wireframe-ai-integrations-core"; path = "modules/integrations-core" },
+        @{ name = "wireframe-ai-observability-core"; path = "modules/observability-core" },
+        @{ name = "wireframe-ai-provider-router-core"; path = "modules/provider-router-core" },
+        @{ name = "wireframe-ai-tenant-core"; path = "modules/tenant-core" },
+        @{ name = "wireframe-ai-webhooks-core"; path = "modules/webhooks-core" },
+        @{ name = "wireframe-ai-interface-core"; path = "modules/interface-core" },
+        @{ name = "adapter-rust"; path = "adapter/rust" },
+        @{ name = "config"; path = "config" },
+        @{ name = "tui-main"; path = "tools/tui-minimal" },
+        @{ name = "agentic-sdk"; path = "sdk/agentic-sdk" }
     )
 
     $needsRebuild = $false
