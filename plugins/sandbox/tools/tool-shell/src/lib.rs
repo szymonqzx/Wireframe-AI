@@ -1,7 +1,7 @@
 //! Shell execution tool — runs commands in the sandbox with validation and resource limits.
 
 use agentic_sdk::plugin::Plugin;
-use agentic_sdk::plugins::sandbox::{Tool, ToolError, SandboxContext};
+use agentic_sdk::plugins::sandbox::{SandboxContext, Tool, ToolError};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use shell_words::split;
@@ -25,9 +25,7 @@ impl ShellTool {
     }
 
     pub fn with_timeout(timeout_secs: u64) -> Self {
-        Self {
-            timeout_secs,
-        }
+        Self { timeout_secs }
     }
 }
 
@@ -99,15 +97,18 @@ impl Tool for ShellTool {
         params: Value,
         sandbox_context: &SandboxContext,
     ) -> Result<Value, ToolError> {
-        let command = params.get("command")
+        let command = params
+            .get("command")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::InvalidParameters("Missing command".to_string()))?;
 
-        let working_dir = params.get("working_dir")
+        let working_dir = params
+            .get("working_dir")
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
-        let timeout_secs = params.get("timeout_secs")
+        let timeout_secs = params
+            .get("timeout_secs")
             .and_then(|v| v.as_u64())
             .unwrap_or(self.timeout_secs);
 
@@ -126,7 +127,9 @@ impl Tool for ShellTool {
         })?;
 
         if parts.is_empty() {
-            return Err(ToolError::InvalidParameters("Empty command after parsing".to_string()));
+            return Err(ToolError::InvalidParameters(
+                "Empty command after parsing".to_string(),
+            ));
         }
 
         if parts.len() > MAX_ARGS {
@@ -137,7 +140,9 @@ impl Tool for ShellTool {
         }
 
         // Check for shell metacharacters in arguments
-        let shell_chars = ['|', '&', ';', '$', '`', '(', ')', '<', '>', '\\', '\n', '\r'];
+        let shell_chars = [
+            '|', '&', ';', '$', '`', '(', ')', '<', '>', '\\', '\n', '\r',
+        ];
         for part in &parts[1..] {
             for &c in &shell_chars {
                 if part.contains(c) {
@@ -164,19 +169,19 @@ impl Tool for ShellTool {
         cmd.args(args);
         cmd.current_dir(&dir);
 
-        let output = match tokio::time::timeout(
-            std::time::Duration::from_secs(timeout_secs),
-            cmd.output()
-        ).await {
-            Ok(Ok(out)) => out,
-            Ok(Err(e)) => {
-                error!(error = ?e, "command failed");
-                return Err(ToolError::ExecutionFailed(format!("exec error: {}", e)));
-            }
-            Err(_) => {
-                return Err(ToolError::Timeout);
-            }
-        };
+        let output =
+            match tokio::time::timeout(std::time::Duration::from_secs(timeout_secs), cmd.output())
+                .await
+            {
+                Ok(Ok(out)) => out,
+                Ok(Err(e)) => {
+                    error!(error = ?e, "command failed");
+                    return Err(ToolError::ExecutionFailed(format!("exec error: {}", e)));
+                }
+                Err(_) => {
+                    return Err(ToolError::Timeout);
+                }
+            };
 
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();

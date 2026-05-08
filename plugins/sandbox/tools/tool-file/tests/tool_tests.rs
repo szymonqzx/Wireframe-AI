@@ -1,9 +1,9 @@
 //! Tests for the file tool plugin.
 
-use tool_file::FileTool;
+use agentic_sdk::plugins::sandbox::{SandboxContext, Tool};
 use agentic_sdk::Plugin;
-use agentic_sdk::plugins::sandbox::{Tool, SandboxContext};
 use serde_json::json;
+use tool_file::FileTool;
 
 #[tokio::test]
 async fn test_tool_file_input_schema() {

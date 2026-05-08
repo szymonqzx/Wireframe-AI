@@ -1,7 +1,7 @@
 //! File operations tool — read, write, and list files in the sandbox with path validation.
 
 use agentic_sdk::plugin::Plugin;
-use agentic_sdk::plugins::sandbox::{Tool, ToolError, SandboxContext};
+use agentic_sdk::plugins::sandbox::{SandboxContext, Tool, ToolError};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use tokio::fs;
@@ -23,9 +23,7 @@ impl FileTool {
     }
 
     pub fn with_max_file_size(max_file_size: usize) -> Self {
-        Self {
-            max_file_size,
-        }
+        Self { max_file_size }
     }
 }
 
@@ -98,11 +96,13 @@ impl Tool for FileTool {
         params: Value,
         sandbox_context: &SandboxContext,
     ) -> Result<Value, ToolError> {
-        let operation = params.get("operation")
+        let operation = params
+            .get("operation")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::InvalidParameters("Missing operation".to_string()))?;
 
-        let path = params.get("path")
+        let path = params
+            .get("path")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::InvalidParameters("Missing path".to_string()))?;
 
@@ -112,13 +112,17 @@ impl Tool for FileTool {
         match operation {
             "read" => self.read_file(&validated_path).await,
             "write" => {
-                let content = params.get("content")
+                let content = params
+                    .get("content")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| ToolError::InvalidParameters("Missing content".to_string()))?;
                 self.write_file(&validated_path, content).await
             }
             "list" => self.list_directory(&validated_path).await,
-            _ => Err(ToolError::InvalidParameters(format!("Unknown operation: {}", operation))),
+            _ => Err(ToolError::InvalidParameters(format!(
+                "Unknown operation: {}",
+                operation
+            ))),
         }
     }
 }
@@ -146,11 +150,15 @@ impl FileTool {
             .join("/");
 
         if normalized.contains("..") {
-            return Err(ToolError::PermissionDenied("Path traversal not allowed".to_string()));
+            return Err(ToolError::PermissionDenied(
+                "Path traversal not allowed".to_string(),
+            ));
         }
 
         if path.starts_with('/') || path.starts_with('\\') {
-            return Err(ToolError::PermissionDenied("Absolute paths not allowed".to_string()));
+            return Err(ToolError::PermissionDenied(
+                "Absolute paths not allowed".to_string(),
+            ));
         }
 
         Ok(normalized)
@@ -207,7 +215,12 @@ impl FileTool {
             ToolError::ExecutionFailed(format!("Failed to read entry: {}", e))
         })? {
             let name = entry.file_name().to_string_lossy().to_string();
-            let kind = if entry.file_type().await.map(|ft| ft.is_dir()).unwrap_or(false) {
+            let kind = if entry
+                .file_type()
+                .await
+                .map(|ft| ft.is_dir())
+                .unwrap_or(false)
+            {
                 format!("{}/", name)
             } else {
                 name

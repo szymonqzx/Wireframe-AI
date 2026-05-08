@@ -15,11 +15,11 @@ jobs:
 
     services:
       nats:
-        image: nats:latest
+        image: nats:alpine
         ports:
           - 4222:4222
         options: >-
-          --health-cmd "natsserver -version"
+          --health-cmd "nc -z localhost 4222 || exit 1"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -66,4 +66,4 @@ jobs:
       - name: Check imports
         run: python -c "from agentic_sdk import Envelope, Module; print('Python SDK OK')"
       - name: Run Python tests
-        run: python -m pytest tests/test_python_sdk.py -v
+        run: python -m pytest tests/python/test_python_sdk.py -v

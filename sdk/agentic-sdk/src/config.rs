@@ -1,12 +1,12 @@
 //! Configuration loading and parsing for plugin system.
 
+use notify::RecommendedWatcher;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use notify::RecommendedWatcher;
 
 /// Top-level plugin configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -160,11 +160,10 @@ impl PluginConfig {
     /// Supports ${VAR} syntax for environment variable substitution.
     /// Missing variables are replaced with empty string.
     pub fn expand_env_vars(&mut self) -> Result<(), ConfigError> {
-        let mut value = serde_json::to_value(&*self)
-            .map_err(|e| ConfigError::IoError(e.to_string()))?;
+        let mut value =
+            serde_json::to_value(&*self).map_err(|e| ConfigError::IoError(e.to_string()))?;
         Self::expand_env_vars_in_value(&mut value);
-        *self = serde_json::from_value(value)
-            .map_err(|e| ConfigError::IoError(e.to_string()))?;
+        *self = serde_json::from_value(value).map_err(|e| ConfigError::IoError(e.to_string()))?;
         Ok(())
     }
 
@@ -222,11 +221,12 @@ impl PluginConfig {
     pub fn validate(&self, schema: &Value) -> Result<(), ConfigError> {
         use jsonschema::JSONSchema;
 
-        let compiled_schema = JSONSchema::compile(schema)
-            .map_err(|e| ConfigError::ValidationError(format!("Schema compilation failed: {}", e)))?;
+        let compiled_schema = JSONSchema::compile(schema).map_err(|e| {
+            ConfigError::ValidationError(format!("Schema compilation failed: {}", e))
+        })?;
 
-        let config_value = serde_json::to_value(self)
-            .map_err(|e| ConfigError::IoError(e.to_string()))?;
+        let config_value =
+            serde_json::to_value(self).map_err(|e| ConfigError::IoError(e.to_string()))?;
 
         if let Some(errors) = compiled_schema.validate(&config_value).err() {
             let error_messages: Vec<String> = errors.map(|e| e.to_string()).collect();
@@ -276,14 +276,14 @@ impl ConfigWatcher {
     where
         F: Fn(PluginConfig) + Send + 'static,
     {
-        use notify::{RecursiveMode, Watcher};
         use notify::event::EventKind;
+        use notify::{RecursiveMode, Watcher};
 
         let path = self.path.clone();
         let config = self.config.clone();
 
-        let mut watcher = notify::recommended_watcher(move |res: Result<notify::Event, _>| {
-            match res {
+        let mut watcher =
+            notify::recommended_watcher(move |res: Result<notify::Event, _>| match res {
                 Ok(event) => {
                     if matches!(event.kind, EventKind::Modify(_) | EventKind::Create(_)) {
                         if let Ok(new_config) = PluginConfig::from_file(&path) {
@@ -298,9 +298,8 @@ impl ConfigWatcher {
                 Err(e) => {
                     tracing::error!("Config watch error: {}", e);
                 }
-            }
-        })
-        .map_err(|e| ConfigError::WatcherError(e.to_string()))?;
+            })
+            .map_err(|e| ConfigError::WatcherError(e.to_string()))?;
 
         watcher
             .watch(&self.path, RecursiveMode::NonRecursive)

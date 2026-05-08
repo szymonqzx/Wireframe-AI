@@ -1,8 +1,8 @@
 //! Tests for the whitelist security policy plugin.
 
-use policy_whitelist::WhitelistPolicy;
+use agentic_sdk::plugins::sandbox::{FileOperation, SecurityPolicy};
 use agentic_sdk::Plugin;
-use agentic_sdk::plugins::sandbox::{SecurityPolicy, FileOperation};
+use policy_whitelist::WhitelistPolicy;
 
 #[tokio::test]
 async fn test_policy_whitelist_plugin_id() {
@@ -48,23 +48,30 @@ async fn test_policy_whitelist_network_access_enabled() {
 #[tokio::test]
 async fn test_policy_whitelist_readonly_filesystem() {
     let policy = WhitelistPolicy::new().filesystem_policy("readonly");
-    let result = policy.validate_file_access("/tmp/test.txt", FileOperation::Read).await;
+    let result = policy
+        .validate_file_access("/tmp/test.txt", FileOperation::Read)
+        .await;
     assert!(result.is_ok());
 
-    let result = policy.validate_file_access("/tmp/test.txt", FileOperation::Write).await;
+    let result = policy
+        .validate_file_access("/tmp/test.txt", FileOperation::Write)
+        .await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn test_policy_whitelist_writable_filesystem() {
     let policy = WhitelistPolicy::new().filesystem_policy("writable");
-    let result = policy.validate_file_access("/tmp/test.txt", FileOperation::Write).await;
+    let result = policy
+        .validate_file_access("/tmp/test.txt", FileOperation::Write)
+        .await;
     assert!(result.is_ok());
 }
 
 #[tokio::test]
 async fn test_policy_whitelist_custom_allowed_commands() {
-    let policy = WhitelistPolicy::with_allowed_commands(vec!["python".to_string(), "node".to_string()]);
+    let policy =
+        WhitelistPolicy::with_allowed_commands(vec!["python".to_string(), "node".to_string()]);
     let result = policy.validate_command("python script.py", "/tmp").await;
     assert!(result.is_ok());
 

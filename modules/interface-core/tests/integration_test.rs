@@ -1,7 +1,7 @@
 //! Integration tests for interface-core with plugins.
 
-use wireframe_ai_interface_core::InterfaceCore;
 use agentic_sdk::message_types::TaskComplete;
+use wireframe_ai_interface_core::InterfaceCore;
 
 #[tokio::test]
 async fn test_interface_core_create() {
