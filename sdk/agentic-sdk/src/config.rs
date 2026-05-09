@@ -195,7 +195,7 @@ impl PluginConfig {
                 chars.next(); // consume '{'
                 let mut var_name = String::new();
 
-                while let Some(c) = chars.next() {
+                for c in chars.by_ref() {
                     if c == '}' {
                         break;
                     }

@@ -32,3 +32,13 @@ schema-validation = ["jsonschema"]
 [lib]
 name = "agentic_sdk"
 path = "src/lib.rs"
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[[bench]]
+name = "orchestrator_patterns_bench"
+harness = false
+
+[dev-dependencies.criterion]
+version = "0.5"
