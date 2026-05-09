@@ -492,14 +492,33 @@ mod tests {
                     let _ = socket.write_all(b"PONG\r\n").await;
                 }
 
-                // Just keep reading and answering PINGs and discarding messages to keep the connection alive
+                // Just keep reading and answering PINGs and discarding messages to keep the connection alive.
+                // NATS is a line-based protocol over TCP, so PING may arrive pipelined with other
+                // commands (e.g. PUB) in the same read. Scan the entire read buffer for PING\r\n
+                // rather than only checking the prefix, otherwise pipelined PINGs would be ignored
+                // and the client would eventually time out.
                 loop {
-                    if socket.read(&mut buf).await.unwrap_or(0) == 0 {
-                        break;
+                    let n = match socket.read(&mut buf).await {
+                        Ok(0) | Err(_) => break,
+                        Ok(n) => n,
+                    };
+                    let chunk = &buf[..n];
+                    // Count PING occurrences and reply with one PONG per PING.
+                    let mut count = 0usize;
+                    let needle = b"PING\r\n";
+                    let mut i = 0;
+                    while i + needle.len() <= chunk.len() {
+                        if &chunk[i..i + needle.len()] == needle {
+                            count += 1;
+                            i += needle.len();
+                        } else {
+                            i += 1;
+                        }
                     }
-                    // Very naive PING handler
-                    if buf.starts_with(b"PING") {
-                        let _ = socket.write_all(b"PONG\r\n").await;
+                    for _ in 0..count {
+                        if socket.write_all(b"PONG\r\n").await.is_err() {
+                            break;
+                        }
                     }
                 }
             }
@@ -567,14 +586,22 @@ mod tests {
     #[tokio::test]
     async fn test_message_buffer_auto_flush() {
         let (nc, _server) = setup_mock_nats().await;
-        let flush_interval = Duration::from_millis(50);
+        let flush_interval = Duration::from_millis(100);
         let buffer = MessageBuffer::new(nc, 10, flush_interval);
 
         buffer.publish("test.subject".to_string(), vec![1]).await;
         assert_eq!(buffer.size().await, 1);
 
-        // Wait longer than max_age
-        sleep(Duration::from_millis(150)).await;
+        // Poll for auto-flush rather than sleeping a fixed amount, so the test
+        // tolerates slow CI runners where the tokio interval tick may be
+        // delayed well beyond the nominal max_age.
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while !buffer.is_empty().await {
+            if std::time::Instant::now() >= deadline {
+                break;
+            }
+            sleep(Duration::from_millis(25)).await;
+        }
 
         assert!(buffer.is_empty().await);
         assert_eq!(buffer.size().await, 0);
