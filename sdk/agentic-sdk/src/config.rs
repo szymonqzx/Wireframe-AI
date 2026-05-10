@@ -195,7 +195,7 @@ impl PluginConfig {
                 chars.next(); // consume '{'
                 let mut var_name = String::new();
 
-                while let Some(c) = chars.next() {
+                for c in chars.by_ref() {
                     if c == '}' {
                         break;
                     }
@@ -398,6 +398,155 @@ modules:
         match result.err().unwrap() {
             ConfigError::ParseError(_) => (),
             _ => panic!("Expected ParseError"),
+        }
+    }
+
+    #[test]
+    fn test_plugin_config_from_file_valid_yaml() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config.yaml");
+        let yaml = r#"
+modules:
+  test:
+    enabled: true
+    plugins:
+      enrichment_pipeline: []
+      tools: []
+"#;
+        fs::write(&file_path, yaml).unwrap();
+
+        let config = PluginConfig::from_file(&file_path).unwrap();
+        assert!(config.modules.contains_key("test"));
+    }
+
+    #[test]
+    fn test_plugin_config_from_file_valid_json() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config.json");
+        let json = r#"{
+            "modules": {
+                "test": {
+                    "enabled": true,
+                    "plugins": {
+                        "enrichment_pipeline": [],
+                        "tools": []
+                    }
+                }
+            }
+        }"#;
+        fs::write(&file_path, json).unwrap();
+
+        let config = PluginConfig::from_file(&file_path).unwrap();
+        assert!(config.modules.contains_key("test"));
+    }
+
+    #[test]
+    fn test_plugin_config_from_file_non_existent() {
+        let file_path = PathBuf::from("non_existent_file.yaml");
+        let result = PluginConfig::from_file(&file_path);
+        assert!(result.is_err());
+        match result.err().unwrap() {
+            ConfigError::IoError(e) => assert!(e.contains("No such file or directory")),
+            _ => panic!("Expected IoError"),
+        }
+    }
+
+    #[test]
+    fn test_plugin_config_from_file_unsupported_format() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config.txt");
+        fs::write(&file_path, "some content").unwrap();
+
+        let result = PluginConfig::from_file(&file_path);
+        assert!(result.is_err());
+        match result.err().unwrap() {
+            ConfigError::UnsupportedFormat(ext) => assert_eq!(ext, "txt"),
+            _ => panic!("Expected UnsupportedFormat"),
+        }
+    }
+
+    #[test]
+    fn test_plugin_config_from_file_invalid_content() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config.yaml");
+        fs::write(&file_path, "not a valid yaml: { [").unwrap();
+
+        let result = PluginConfig::from_file(&file_path);
+        assert!(result.is_err());
+        match result.err().unwrap() {
+            ConfigError::ParseError(_) => (),
+            _ => panic!("Expected ParseError"),
+        }
+    }
+
+    #[test]
+    fn test_plugin_config_to_file_yaml() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config_out.yaml");
+
+        let config = PluginConfig {
+            modules: {
+                let mut map = HashMap::new();
+                map.insert(
+                    "test".to_string(),
+                    ModuleConfig {
+                        enabled: true,
+                        plugins: ModulePlugins::default(),
+                    },
+                );
+                map
+            },
+        };
+
+        let result = config.to_file(&file_path);
+        assert!(result.is_ok());
+
+        // Verify we can read it back
+        let read_config = PluginConfig::from_file(&file_path).unwrap();
+        assert!(read_config.modules.contains_key("test"));
+    }
+
+    #[test]
+    fn test_plugin_config_to_file_json() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config_out.json");
+
+        let config = PluginConfig {
+            modules: {
+                let mut map = HashMap::new();
+                map.insert(
+                    "test".to_string(),
+                    ModuleConfig {
+                        enabled: true,
+                        plugins: ModulePlugins::default(),
+                    },
+                );
+                map
+            },
+        };
+
+        let result = config.to_file(&file_path);
+        assert!(result.is_ok());
+
+        // Verify we can read it back
+        let read_config = PluginConfig::from_file(&file_path).unwrap();
+        assert!(read_config.modules.contains_key("test"));
+    }
+
+    #[test]
+    fn test_plugin_config_to_file_unsupported_format() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config_out.txt");
+
+        let config = PluginConfig {
+            modules: HashMap::new(),
+        };
+
+        let result = config.to_file(&file_path);
+        assert!(result.is_err());
+        match result.err().unwrap() {
+            ConfigError::UnsupportedFormat(ext) => assert_eq!(ext, "txt"),
+            _ => panic!("Expected UnsupportedFormat"),
         }
     }
 }
