@@ -1,8 +1,13 @@
 use agentic_sdk::envelope::Envelope;
-use agentic_sdk::message_types::{ContextPackage, TaskComplete, TaskEnriched, TaskSubmitted, ChatMessage, MemoryChunk};
-use agentic_sdk::plugins::context::{EnrichmentStrategy, MemoryBackend, StorageBackend, StorageError, MemoryError, EnrichmentError};
-use std::sync::Arc;
+use agentic_sdk::message_types::{
+    ChatMessage, ContextPackage, MemoryChunk, TaskComplete, TaskEnriched, TaskSubmitted,
+};
+use agentic_sdk::plugins::context::{
+    EnrichmentStrategy, MemoryBackend, MemoryError, StorageBackend, StorageError,
+};
 use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{RwLock, Semaphore};
 use tracing::{error, info};
@@ -49,20 +54,17 @@ impl<T> CacheEntry<T> {
 
 /// Cache invalidation strategy
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum InvalidationStrategy {
     /// Time-based invalidation only
     TimeOnly,
     /// Version-based invalidation
     VersionBased,
     /// Both time and version based
+    #[default]
     Combined,
 }
 
-impl Default for InvalidationStrategy {
-    fn default() -> Self {
-        Self::Combined
-    }
-}
 
 /// Cache type for selective invalidation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,7 +107,7 @@ impl StringInterner {
             let arc: Arc<str> = s.into();
             // Evict if at capacity
             if self.strings.len() >= self.max_size {
-                if let Some(key) = self.strings.keys().next().map(|k| k.clone()) {
+                if let Some(key) = self.strings.keys().next().cloned() {
                     self.strings.remove(&key);
                 }
             }
@@ -157,8 +159,11 @@ impl<T: Clone> LruCache<T> {
         if let Some(entry) = self.entries.get_mut(key) {
             // Check version-based invalidation
             if self.invalidation_strategy == InvalidationStrategy::VersionBased
-                || self.invalidation_strategy == InvalidationStrategy::Combined {
-                let global_ver = self.global_version.load(std::sync::atomic::Ordering::SeqCst);
+                || self.invalidation_strategy == InvalidationStrategy::Combined
+            {
+                let global_ver = self
+                    .global_version
+                    .load(std::sync::atomic::Ordering::SeqCst);
                 if entry.version() < global_ver {
                     self.entries.remove(key);
                     return None;
@@ -192,7 +197,9 @@ impl<T: Clone> LruCache<T> {
             }
         }
 
-        let current_version = self.global_version.load(std::sync::atomic::Ordering::SeqCst);
+        let current_version = self
+            .global_version
+            .load(std::sync::atomic::Ordering::SeqCst);
         let mut entry = CacheEntry::new(value);
         entry.version = current_version;
         self.entries.insert(key, entry);
@@ -414,8 +421,11 @@ impl ContextCore {
         }
 
         // 5. Run enrichment pipeline with caching
-        let enrichment_key = format!("enrich:{}:{}", task.session_id,
-            task.user_input.chars().take(50).collect::<String>());
+        let enrichment_key = format!(
+            "enrich:{}:{}",
+            task.session_id,
+            task.user_input.chars().take(50).collect::<String>()
+        );
         let context = {
             let mut cache = self.enrichment_cache.write().await;
             if let Some(cached) = cache.get(&enrichment_key) {
@@ -483,6 +493,12 @@ pub struct InMemoryStorage {
     sessions: Arc<RwLock<HashMap<String, Vec<ChatMessage>>>>,
 }
 
+impl Default for InMemoryStorage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InMemoryStorage {
     pub fn new() -> Self {
         Self {
@@ -508,7 +524,9 @@ impl StorageBackend for InMemoryStorage {
         content: &str,
     ) -> Result<(), StorageError> {
         let mut sessions = self.sessions.write().await;
-        let messages = sessions.entry(session_id.to_string()).or_insert_with(Vec::new);
+        let messages = sessions
+            .entry(session_id.to_string())
+            .or_insert_with(Vec::new);
         messages.push(ChatMessage {
             role: role.to_string(),
             content: content.to_string(),
@@ -540,6 +558,12 @@ impl StorageBackend for InMemoryStorage {
 /// Built-in in-memory memory backend for basic functionality.
 pub struct InMemoryBackend {
     chunks: Arc<RwLock<HashMap<String, Vec<MemoryChunk>>>>,
+}
+
+impl Default for InMemoryBackend {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl InMemoryBackend {
@@ -579,7 +603,9 @@ impl MemoryBackend for InMemoryBackend {
         source: &str,
     ) -> Result<(), MemoryError> {
         let mut chunks = self.chunks.write().await;
-        let session_chunks = chunks.entry(session_id.to_string()).or_insert_with(Vec::new);
+        let session_chunks = chunks
+            .entry(session_id.to_string())
+            .or_insert_with(Vec::new);
         session_chunks.push(MemoryChunk {
             id: format!("mem_{}", session_chunks.len()),
             content: content.to_string(),
@@ -606,5 +632,197 @@ impl MemoryBackend for InMemoryBackend {
                 }
             })
             .unwrap_or_default())
+    }
+}
+
+use agentic_sdk::plugin::{Plugin, PluginError};
+
+#[async_trait::async_trait]
+impl Plugin for InMemoryStorage {
+    fn plugin_id(&self) -> &'static str {
+        "in-memory-storage"
+    }
+
+    fn version(&self) -> &'static str {
+        "0.1.0"
+    }
+
+    fn description(&self) -> &'static str {
+        "In-memory storage backend"
+    }
+
+    async fn initialize(&mut self, _config: &serde_json::Value) -> Result<(), PluginError> {
+        Ok(())
+    }
+
+    async fn health_check(&self) -> Result<bool, PluginError> {
+        Ok(true)
+    }
+
+    async fn shutdown(&mut self) -> Result<(), PluginError> {
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Plugin for InMemoryBackend {
+    fn plugin_id(&self) -> &'static str {
+        "in-memory-backend"
+    }
+
+    fn version(&self) -> &'static str {
+        "0.1.0"
+    }
+
+    fn description(&self) -> &'static str {
+        "In-memory memory backend"
+    }
+
+    async fn initialize(&mut self, _config: &serde_json::Value) -> Result<(), PluginError> {
+        Ok(())
+    }
+
+    async fn health_check(&self) -> Result<bool, PluginError> {
+        Ok(true)
+    }
+
+    async fn shutdown(&mut self) -> Result<(), PluginError> {
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_in_memory_storage_new() {
+        let storage = InMemoryStorage::new();
+        assert!(storage.sessions.try_read().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_in_memory_storage_ensure_session() {
+        let storage = InMemoryStorage::new();
+        storage.ensure_session("session1").await.unwrap();
+
+        let sessions = storage.sessions.read().await;
+        assert!(sessions.contains_key("session1"));
+        assert!(sessions.get("session1").unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_in_memory_storage_store_and_load_message() {
+        let storage = InMemoryStorage::new();
+
+        storage
+            .store_message("session1", "user", "hello")
+            .await
+            .unwrap();
+        storage
+            .store_message("session1", "assistant", "world")
+            .await
+            .unwrap();
+
+        let history = storage.load_session_history("session1", 10).await.unwrap();
+        assert_eq!(history.len(), 2);
+        assert_eq!(history[0].role, "user");
+        assert_eq!(history[0].content, "hello");
+        assert_eq!(history[1].role, "assistant");
+        assert_eq!(history[1].content, "world");
+    }
+
+    #[tokio::test]
+    async fn test_in_memory_storage_load_with_limit() {
+        let storage = InMemoryStorage::new();
+
+        for i in 0..5 {
+            storage
+                .store_message("session1", "user", &format!("msg {}", i))
+                .await
+                .unwrap();
+        }
+
+        let history = storage.load_session_history("session1", 2).await.unwrap();
+        assert_eq!(history.len(), 2);
+        assert_eq!(history[0].content, "msg 3");
+        assert_eq!(history[1].content, "msg 4");
+    }
+
+    #[tokio::test]
+    async fn test_in_memory_storage_load_nonexistent() {
+        let storage = InMemoryStorage::new();
+        let history = storage
+            .load_session_history("nonexistent", 10)
+            .await
+            .unwrap();
+        assert!(history.is_empty());
+    }
+
+    #[test]
+    fn test_in_memory_backend_new() {
+        let backend = InMemoryBackend::new();
+        assert!(backend.chunks.try_read().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_in_memory_backend_persist_and_load_chunks() {
+        let backend = InMemoryBackend::new();
+
+        backend
+            .persist_chunk("session1", "chunk data", "source1")
+            .await
+            .unwrap();
+
+        let chunks = backend.load_chunks("session1", 10).await.unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].content, "chunk data");
+        assert_eq!(chunks[0].source, "source1");
+        assert_eq!(chunks[0].relevance_score, 1.0);
+        assert_eq!(chunks[0].id, "mem_0");
+    }
+
+    #[tokio::test]
+    async fn test_in_memory_backend_search() {
+        let backend = InMemoryBackend::new();
+
+        backend
+            .persist_chunk("session1", "Rust is great", "source1")
+            .await
+            .unwrap();
+        backend
+            .persist_chunk("session1", "I love programming", "source2")
+            .await
+            .unwrap();
+        backend
+            .persist_chunk("session1", "rusty metal", "source3")
+            .await
+            .unwrap();
+
+        let results = backend.search("rust", "session1", 10).await.unwrap();
+        assert_eq!(results.len(), 2);
+        assert!(results.iter().any(|c| c.content == "Rust is great"));
+        assert!(results.iter().any(|c| c.content == "rusty metal"));
+    }
+
+    #[tokio::test]
+    async fn test_in_memory_backend_search_with_limit() {
+        let backend = InMemoryBackend::new();
+
+        backend
+            .persist_chunk("session1", "match 1", "s1")
+            .await
+            .unwrap();
+        backend
+            .persist_chunk("session1", "match 2", "s2")
+            .await
+            .unwrap();
+        backend
+            .persist_chunk("session1", "match 3", "s3")
+            .await
+            .unwrap();
+
+        let results = backend.search("match", "session1", 2).await.unwrap();
+        assert_eq!(results.len(), 2);
     }
 }

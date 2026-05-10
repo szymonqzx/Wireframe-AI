@@ -59,7 +59,7 @@ impl ContextCoreModule {
             correlation_id: env.correlation_id.clone(),
             topic: env.topic.clone(),
             payload: task.clone(),
-            schema_version: env.schema_version.clone(),
+            schema_version: env.schema_version,
             timestamp: env.timestamp,
         };
 
@@ -122,58 +122,78 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(storage_config) = config.context.storage_plugin.as_ref() {
         match storage_config.plugin_id.as_str() {
             "storage-sqlite" => {
-                let db_path = storage_config.config
+                let db_path = storage_config
+                    .config
                     .as_ref()
                     .and_then(|c| c.get("db_path"))
                     .and_then(|v| v.as_str())
                     .unwrap_or(&config.context.db_path);
-                let storage = Arc::new(wireframe_ai_storage_sqlite::SQLiteStoragePlugin::new(db_path.to_string()));
+                let storage = Arc::new(wireframe_ai_storage_sqlite::SQLiteStoragePlugin::new(
+                    db_path.to_string(),
+                ));
                 core.set_storage(storage).await;
                 info!("Loaded storage plugin: storage-sqlite");
             }
             _ => {
-                warn!("Unknown storage plugin: {}, using built-in in-memory storage", storage_config.plugin_id);
-                core.set_storage(Arc::new(wireframe_ai_context_core::InMemoryStorage::new())).await;
+                warn!(
+                    "Unknown storage plugin: {}, using built-in in-memory storage",
+                    storage_config.plugin_id
+                );
+                core.set_storage(Arc::new(wireframe_ai_context_core::InMemoryStorage::new()))
+                    .await;
             }
         }
     } else {
         // Use built-in in-memory storage as fallback
         info!("No storage plugin configured, using built-in in-memory storage");
-        core.set_storage(Arc::new(wireframe_ai_context_core::InMemoryStorage::new())).await;
+        core.set_storage(Arc::new(wireframe_ai_context_core::InMemoryStorage::new()))
+            .await;
     }
 
     if let Some(memory_config) = config.context.memory_plugin.as_ref() {
         match memory_config.plugin_id.as_str() {
             "memory-fts5" => {
-                let db_path = memory_config.config
+                let db_path = memory_config
+                    .config
                     .as_ref()
                     .and_then(|c| c.get("db_path"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("./wireframe_ai_memory.db");
-                let memory = Arc::new(wireframe_ai_memory_fts5::FTS5MemoryPlugin::new(db_path.to_string()));
+                let memory = Arc::new(wireframe_ai_memory_fts5::FTS5MemoryPlugin::new(
+                    db_path.to_string(),
+                ));
                 core.set_memory(memory).await;
                 info!("Loaded memory plugin: memory-fts5");
             }
             _ => {
-                warn!("Unknown memory plugin: {}, using built-in in-memory backend", memory_config.plugin_id);
-                core.set_memory(Arc::new(wireframe_ai_context_core::InMemoryBackend::new())).await;
+                warn!(
+                    "Unknown memory plugin: {}, using built-in in-memory backend",
+                    memory_config.plugin_id
+                );
+                core.set_memory(Arc::new(wireframe_ai_context_core::InMemoryBackend::new()))
+                    .await;
             }
         }
     } else {
         // Use built-in in-memory backend as fallback
         info!("No memory plugin configured, using built-in in-memory backend");
-        core.set_memory(Arc::new(wireframe_ai_context_core::InMemoryBackend::new())).await;
+        core.set_memory(Arc::new(wireframe_ai_context_core::InMemoryBackend::new()))
+            .await;
     }
 
     if config.context.enrichment_plugins.is_empty() {
         // Add built-in environment enrichment as fallback
         info!("No enrichment plugins configured, using built-in environment enrichment");
-        core.add_enrichment(Arc::new(wireframe_ai_enrichment_env::EnvEnrichmentPlugin::new())).await;
+        core.add_enrichment(Arc::new(
+            wireframe_ai_enrichment_env::EnvEnrichmentPlugin::new(),
+        ))
+        .await;
     } else {
         for enrichment_config in &config.context.enrichment_plugins {
             match enrichment_config.plugin_id.as_str() {
                 "enrichment-env" => {
-                    let enrichment = Arc::new(wireframe_ai_enrichment_env::EnvEnrichmentPlugin::new());
+                    let enrichment =
+                        Arc::new(wireframe_ai_enrichment_env::EnvEnrichmentPlugin::new());
                     core.add_enrichment(enrichment).await;
                     info!("Loaded enrichment plugin: enrichment-env");
                 }
@@ -187,5 +207,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let module = ContextCoreModule { core };
 
     info!("context core starting on {}", nats_url);
-    module.run(&nats_url).await
+    module.run(nats_url).await
 }
