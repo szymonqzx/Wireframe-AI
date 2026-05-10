@@ -12,6 +12,7 @@ use std::collections::HashMap;
 pub fn fan_out(enriched: &TaskEnriched, sub_tasks: Vec<String>) -> Vec<Envelope<AgentJob>> {
     let mut jobs = Vec::with_capacity(sub_tasks.len());
     let session_id = Some(enriched.session_id.clone());
+
     let metadata = crate::message_types::JobMetadata {
         submitter: "orchestrator".to_string(),
         priority: 5,
@@ -40,11 +41,7 @@ pub fn fan_out(enriched: &TaskEnriched, sub_tasks: Vec<String>) -> Vec<Envelope<
             adapter_hints: None,
             schema_version: 1,
         };
-        jobs.push(Envelope::new(
-            "agent.job",
-            job,
-            session_id.clone(),
-        ));
+        jobs.push(Envelope::new("agent.job", job, session_id.clone()));
     }
     jobs
 }
