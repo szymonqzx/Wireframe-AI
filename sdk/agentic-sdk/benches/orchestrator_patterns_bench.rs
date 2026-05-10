@@ -1,6 +1,6 @@
 use agentic_sdk::message_types::TaskEnriched;
 use agentic_sdk::orchestrator_patterns::fan_out;
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 
 fn bench_fan_out(c: &mut Criterion) {
     let mut group = c.benchmark_group("fan_out");
@@ -16,7 +16,7 @@ fn bench_fan_out(c: &mut Criterion) {
 
     for size in [10, 100, 1000].iter() {
         group.bench_with_input(BenchmarkId::new("sub_tasks", size), size, |b, &size| {
-            b.iter_with_setup(
+            b.iter_batched(
                 || {
                     let mut sub_tasks = Vec::with_capacity(size);
                     for i in 0..size {
@@ -27,6 +27,7 @@ fn bench_fan_out(c: &mut Criterion) {
                 |sub_tasks| {
                     black_box(fan_out(&enriched, sub_tasks));
                 },
+                BatchSize::SmallInput,
             );
         });
     }
