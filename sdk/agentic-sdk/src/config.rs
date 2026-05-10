@@ -400,4 +400,38 @@ modules:
             _ => panic!("Expected ParseError"),
         }
     }
+
+    #[tokio::test]
+    async fn test_config_watcher_stop() {
+        use std::fs;
+        use tempfile::tempdir;
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config.yaml");
+        let yaml = r#"
+modules:
+  test:
+    enabled: true
+    plugins:
+      enrichment_pipeline: []
+      tools: []
+"#;
+        fs::write(&file_path, yaml).unwrap();
+
+        let mut watcher = ConfigWatcher::new(file_path).unwrap();
+
+        // Watcher is initially None until watch() is called
+        assert!(watcher.watcher.is_none());
+
+        // Start watching - we just pass a dummy callback
+        let _ = watcher.watch(|_| {}).await.unwrap();
+
+        // Watcher should be Some now
+        assert!(watcher.watcher.is_some());
+
+        // Stop watching
+        watcher.stop();
+
+        // Watcher should be None again
+        assert!(watcher.watcher.is_none());
+    }
 }
