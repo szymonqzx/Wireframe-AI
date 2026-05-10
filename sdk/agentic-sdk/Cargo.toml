@@ -34,6 +34,7 @@ notify = "6.1"
 dashmap = { workspace = true }
 
 agentic-sdk-macros = { version = "0.1.0", path = "../agentic-sdk-macros", optional = true }
+tempfile.workspace = true
 
 [features]
 macros = ["agentic-sdk-macros"]
