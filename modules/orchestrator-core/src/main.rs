@@ -8,7 +8,11 @@
 //! Subscribes to: task.enriched
 //! Publishes to: task.complete
 
-use agentic_sdk::Module;
+use agentic_sdk::{Envelope, Module};
+use async_nats;
+use execution_sequential::SequentialExecution;
+use planner_linear::LinearPlanner;
+use synthesizer_merge::MergeSynthesizer;
 use tracing::{error, info};
 use wireframe_ai_orchestrator_core::OrchestratorCore;
 use wireframe_config::WireframeConfig;
@@ -139,12 +143,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Orchestrator-core started — loading plugins");
 
-    // Create orchestrator core
-    let core = OrchestratorCore::new();
+    // Create NATS client
+    let nats_client = async_nats::connect(&nats_url)
+        .await
+        .map_err(|e| format!("Failed to connect to NATS: {}", e))?;
+    info!("Connected to NATS at {}", nats_url);
 
-    // Note: Plugins will be manually registered here once they are created
-    // For now, we'll proceed without plugins and handle the error gracefully
-    info!("Orchestrator-core ready (plugins will be registered when available)");
+    // Create orchestrator core
+    let mut core = OrchestratorCore::new();
+
+    // Register basic plugins
+    info!("Registering basic orchestrator plugins");
+
+    // Register planner plugin
+    let planner = Box::new(LinearPlanner::new());
+    core.register_planner(planner).await?;
+    info!("Registered planner plugin: planner-linear");
+
+    // Register execution plugin with NATS client
+    let execution = Box::new(SequentialExecution::new(nats_client));
+    core.register_execution(execution).await?;
+    info!("Registered execution plugin: execution-sequential");
+
+    // Register synthesizer plugin
+    let synthesizer = Box::new(MergeSynthesizer::new());
+    core.register_synthesizer(synthesizer).await?;
+    info!("Registered synthesizer plugin: synthesizer-merge");
+
+    info!("Orchestrator-core ready with basic plugins configured");
 
     let module = OrchestratorCoreModule { core };
 

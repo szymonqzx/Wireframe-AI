@@ -1,5 +1,5 @@
 //! TUI configuration management
-//! 
+//!
 //! Loads and manages TUI configuration from TOML files
 
 use anyhow::Result;
@@ -11,14 +11,15 @@ use std::path::PathBuf;
 pub struct TuiConfig {
     /// NATS server URL
     pub nats_url: String,
-    
+
     /// Tick rate in milliseconds
     pub tick_rate_ms: u64,
-    
+
     /// Provider configurations
     pub providers: Vec<ProviderConfig>,
-    
+
     /// Current provider name
+    #[serde(default = "default_current_provider")]
     pub current_provider: String,
 }
 
@@ -27,12 +28,16 @@ pub struct TuiConfig {
 pub struct ProviderConfig {
     /// Provider name
     pub name: String,
-    
+
     /// API key environment variable
     pub api_key_env: String,
-    
+
     /// Model name
     pub model: String,
+}
+
+fn default_current_provider() -> String {
+    String::new()
 }
 
 impl Default for TuiConfig {
@@ -53,7 +58,7 @@ impl TuiConfig {
         let config: TuiConfig = toml::from_str(&content)?;
         Ok(config)
     }
-    
+
     /// Load configuration from default path (tui-config.toml in current directory)
     pub fn load_default() -> Result<Self> {
         let path = PathBuf::from("tui-config.toml");
@@ -63,7 +68,7 @@ impl TuiConfig {
             Ok(Self::default())
         }
     }
-    
+
     /// Save configuration to file
     pub fn save_to_file(&self, path: &PathBuf) -> Result<()> {
         let content = toml::to_string_pretty(self)?;
@@ -75,14 +80,14 @@ impl TuiConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_default_config() {
         let config = TuiConfig::default();
         assert_eq!(config.nats_url, "nats://localhost:4222");
         assert_eq!(config.tick_rate_ms, 250);
     }
-    
+
     #[test]
     fn test_config_serialization() {
         let config = TuiConfig::default();

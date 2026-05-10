@@ -14,6 +14,7 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 use std::sync::Arc;
+use std::time::Instant;
 use tui_config::TuiConfig;
 use tui_core::{Application, PluginEvent};
 use tui_input::{InputBuffer, InputEvent, InputHandler};
@@ -53,10 +54,12 @@ async fn main() -> Result<()> {
     let mut input_handler = InputHandler::new();
     let mut event_receiver = input_handler.take_receiver().expect("InputHandler should have a receiver upon creation");
     let input_buffer = Arc::new(tokio::sync::Mutex::new(InputBuffer::new()));
+    let last_event_time = Arc::new(tokio::sync::Mutex::new(Option::<Instant>::None));
 
     // Spawn input handler in background
     tokio::task::spawn_blocking(move || {
-        let _ = input_handler.run();
+        let mut handler = input_handler;
+        let _ = handler.run();
     });
 
     let app_state_clone = app.state();
@@ -86,6 +89,17 @@ async fn main() -> Result<()> {
         while let Ok(event) = event_receiver.try_recv() {
             if event.is_quit() {
                 break 'mainloop;
+            }
+
+            // Debounce: skip rapid duplicate events within 50ms
+            {
+                let mut last_time = last_event_time.lock().await;
+                if let Some(ref lt) = *last_time {
+                    if lt.elapsed() < std::time::Duration::from_millis(50) {
+                        continue;
+                    }
+                }
+                *last_time = Some(Instant::now());
             }
 
             if let InputEvent::Plugin(ref pe) = event {

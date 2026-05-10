@@ -1,0 +1,9 @@
+nats_url = "nats://localhost:4222"
+tick_rate_ms = 250
+
+[[providers]]
+name = "deepseek"
+api_key_env = "DEEPSEEK_API_KEY"
+model = "deepseek-v4-flash"
+
+current_provider = "deepseek"

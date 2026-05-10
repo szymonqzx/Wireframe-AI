@@ -14,7 +14,7 @@ pub struct LinearPlanner {
 impl LinearPlanner {
     pub fn new() -> Self {
         Self {
-            concurrency: 3, // Default concurrency
+            concurrency: 1, // Default to single task for simplicity
         }
     }
 

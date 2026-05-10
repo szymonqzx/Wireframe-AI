@@ -1,5 +1,5 @@
 //! NATS integration for minimal TUI
-//! 
+//!
 //! Handles NATS connection, message publishing, and subscription
 
 use anyhow::Result;
@@ -24,23 +24,23 @@ impl NatsClient {
             url: url.to_string(),
         })
     }
-    
+
     /// Get the underlying client
     pub fn client(&self) -> Arc<Client> {
         self.client.clone()
     }
-    
+
     /// Get the connection URL
     pub fn url(&self) -> &str {
         &self.url
     }
-    
+
     /// Publish a message
     pub async fn publish(&self, subject: &str, payload: Vec<u8>) -> Result<()> {
         self.client.publish(subject.to_string(), payload.into()).await?;
         Ok(())
     }
-    
+
     /// Subscribe to a subject
     pub async fn subscribe(&self, subject: &str) -> Result<async_nats::Subscriber> {
         let subscriber = self.client.subscribe(subject.to_string()).await?;
@@ -75,7 +75,7 @@ pub struct Envelope<T> {
     pub correlation_id: String,
     pub topic: String,
     pub payload: T,
-    pub schema_version: String,
+    pub schema_version: u32,
     pub timestamp: i64,
 }
 
@@ -87,7 +87,7 @@ impl<T> Envelope<T> {
             correlation_id: uuid::Uuid::new_v4().to_string(),
             topic: topic.to_string(),
             payload,
-            schema_version: "v1".to_string(),
+            schema_version: 1,
             timestamp: chrono::Utc::now().timestamp(),
         }
     }
@@ -107,14 +107,14 @@ impl TuiNatsManager {
             pending_tasks: Arc::new(RwLock::new(Vec::new())),
         }
     }
-    
+
     /// Connect to NATS
     pub async fn connect(&self, url: &str) -> Result<()> {
         let client = NatsClient::connect(url).await?;
         *self.client.write().await = Some(Arc::new(client));
         Ok(())
     }
-    
+
     /// Check if connected
     pub fn is_connected(&self) -> bool {
         // This is a blocking check for simplicity
@@ -126,35 +126,35 @@ impl TuiNatsManager {
             false
         }
     }
-    
+
     /// Submit a task
     pub async fn submit_task(&self, user_input: &str) -> Result<String> {
         let client_guard = self.client.read().await;
         let client = client_guard.as_ref().ok_or_else(|| anyhow::anyhow!("Not connected to NATS"))?;
-        
+
         let session_id = uuid::Uuid::new_v4().to_string();
         let task = TaskSubmitted {
             session_id: session_id.clone(),
             user_input: user_input.to_string(),
             submitted_at: chrono::Utc::now().timestamp(),
         };
-        
+
         let envelope = Envelope::new("task.submitted", task, Some(session_id.clone()));
         let payload = serde_json::to_vec(&envelope)?;
-        
+
         client.publish("task.submitted", payload).await?;
-        
+
         // Track pending task
         self.pending_tasks.write().await.push(session_id.clone());
-        
+
         Ok(session_id)
     }
-    
+
     /// Get pending tasks
     pub async fn get_pending_tasks(&self) -> Vec<String> {
         self.pending_tasks.read().await.clone()
     }
-    
+
     /// Remove completed task from pending
     pub async fn complete_task(&self, session_id: &str) {
         let mut pending = self.pending_tasks.write().await;
@@ -171,14 +171,14 @@ impl Default for TuiNatsManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_envelope_creation() {
         let envelope: Envelope<String> = Envelope::new("test.topic", "test payload".to_string(), Some("session123".to_string()));
         assert_eq!(envelope.topic, "test.topic");
         assert_eq!(envelope.session_id, "session123");
     }
-    
+
     #[test]
     fn test_manager_creation() {
         let manager = TuiNatsManager::new();

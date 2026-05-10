@@ -18,6 +18,7 @@ param(
     [switch]$SkipOrchestrator,
     [switch]$SkipAdapter,
     [switch]$SkipBuild,
+    [switch]$psmux,
     [switch]$Help,
     [switch]$Verbose
 )
@@ -122,6 +123,55 @@ if (-not $SkipAdapter) {
             Pop-Location
         }
     }
+}
+
+# Check for psmux (PowerShell multiplexer)
+$psmuxAvailable = $false
+$psmuxCmdName = $null
+try {
+    # Check for pmux first (preferred CLI interface)
+    $pmuxCmd = Get-Command "pmux" -ErrorAction SilentlyContinue
+    if ($pmuxCmd) {
+        $psmuxAvailable = $true
+        $psmuxCmdName = "pmux"
+        Write-Ok "pmux found - modules will open in panes"
+    } else {
+        # Fall back to psmux
+        $psmuxCmd = Get-Command "psmux" -ErrorAction SilentlyContinue
+        if ($psmuxCmd) {
+            $psmuxAvailable = $true
+            $psmuxCmdName = "psmux"
+            Write-Ok "psmux found - modules will open in panes"
+        } else {
+            if ($psmux) {
+                Write-Step "Installing psmux via cargo..."
+                try {
+                    cargo install psmux
+                    if ($LASTEXITCODE -eq 0) {
+                        # Check which command got installed
+                        $pmuxCmd = Get-Command "pmux" -ErrorAction SilentlyContinue
+                        if ($pmuxCmd) {
+                            $psmuxCmdName = "pmux"
+                        } else {
+                            $psmuxCmdName = "psmux"
+                        }
+                        $psmuxAvailable = $true
+                        Write-Ok "psmux installed successfully - modules will open in panes"
+                    } else {
+                        throw "cargo install failed with exit code $LASTEXITCODE"
+                    }
+                } catch {
+                    Write-Warn "Failed to install psmux: $($_.Exception.Message)"
+                    Write-Warn "Modules will open in separate windows"
+                }
+            } else {
+                Write-Muted "psmux not found - modules will open in separate windows"
+                Write-Muted "Use -psmux to install psmux automatically"
+            }
+        }
+    }
+} catch {
+    Write-Muted "psmux not available - modules will open in separate windows"
 }
 
 # ── API Key Configuration ───────────────────────────────────────────────────────
@@ -299,70 +349,148 @@ $cargoRun = if ($BuildMode -eq "release") {
     "cargo run -p"
 }
 
-# Context module
-Write-InfoMsg "Starting context module..."
-try {
-    $ctx = Start-TrackedProcess -Name "context" -Path "powershell.exe" -Arguments @("-NoExit", "-Command", "cd '$RootDir'; cargo run $BuildFlag -p wireframe-ai-context-core") -WorkingDirectory $RootDir
-    if ($ctx) {
-        Write-Ok "Context module started (PID $($ctx.Id))"
-    }
-} catch {
-    Write-Warn "Failed to start context module: $($_.Exception.Message)"
-}
-Start-Sleep -Seconds 1
+if ($psmuxAvailable) {
+    # Use psmux to create panes in a separate window
+    Write-InfoMsg "Creating psmux session in separate window..."
 
-# Orchestrator (optional)
-if (-not $SkipOrchestrator) {
-    Write-InfoMsg "Starting orchestrator..."
     try {
-        $orch = Start-TrackedProcess -Name "orchestrator" -Path "powershell.exe" -Arguments @("-NoExit", "-Command", "cd '$RootDir'; cargo run $BuildFlag -p wireframe-ai-orchestrator-core") -WorkingDirectory $RootDir
-        if ($orch) {
-            Write-Ok "Orchestrator started (PID $($orch.Id))"
+        # Kill any existing wireframe-ai session
+        & $psmuxCmdName kill-session -t wireframe-ai 2>$null
+
+        # Create a new session with the first pane (context module)
+        $ctxCmd = "cd '$RootDir'; cargo run $BuildFlag -p wireframe-ai-context-core"
+        & $psmuxCmdName new-session -d -s wireframe-ai -n Context "powershell" -c $ctxCmd
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to create psmux session"
+        }
+        Write-Ok "Context module pane created"
+
+        # Orchestrator pane (optional)
+        if (-not $SkipOrchestrator) {
+            Write-InfoMsg "Starting orchestrator pane..."
+            $orchCmd = "cd '$RootDir'; cargo run $BuildFlag -p wireframe-ai-orchestrator-core"
+            & $psmuxCmdName new-window -d -t wireframe-ai -n Orchestrator "powershell" -c $orchCmd
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to create orchestrator pane"
+            }
+            Write-Ok "Orchestrator pane created"
+        } else {
+            Write-Ok "Orchestrator skipped (--SkipOrchestrator)"
+        }
+
+        # Sandbox pane
+        Write-InfoMsg "Starting sandbox pane..."
+        $sandboxCmd = "cd '$RootDir'; cargo run $BuildFlag -p wireframe-ai-sandbox-core"
+        & $psmuxCmdName new-window -d -t wireframe-ai -n Sandbox "powershell" -c $sandboxCmd
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to create sandbox pane"
+        }
+        Write-Ok "Sandbox pane created"
+
+        # Python adapter pane (optional)
+        if (-not $SkipAdapter) {
+            Write-InfoMsg "Starting Python adapter pane..."
+            $sdkDir = Join-Path (Join-Path $RootDir "sdk") "agentic-sdk-py\src"
+            $adapterDir = Join-Path (Join-Path $RootDir "adapter") "python\src"
+            $pythonPath = "$sdkDir;$adapterDir"
+            $adapterCmd = "`$env:PYTHONPATH='$pythonPath'; cd '$RootDir'; python -m adapter"
+            & $psmuxCmdName new-window -d -t wireframe-ai -n Adapter "powershell" -c $adapterCmd
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to create adapter pane"
+            }
+            Write-Ok "Python adapter pane created"
+        } else {
+            Write-Ok "Python adapter skipped (--SkipAdapter)"
+        }
+
+        # Open psmux in a new window (detached from current terminal)
+        Write-InfoMsg "Opening psmux session in new window..."
+        Start-Process $psmuxCmdName -ArgumentList "attach-session", "-t", "wireframe-ai"
+        Write-Ok "psmux session opened in new window"
+
+        # Don't start modules separately since they're in psmux panes
+        $skipModuleStart = $true
+
+    } catch {
+        Write-Warn "Failed to create psmux session: $($_.Exception.Message)"
+        Write-Warn "Falling back to separate windows..."
+        $psmuxAvailable = $false
+        $skipModuleStart = $false
+    }
+}
+
+if (-not $skipModuleStart) {
+    # Fallback: Start modules in separate windows
+    # Context module
+    Write-InfoMsg "Starting context module..."
+    try {
+        $ctx = Start-TrackedProcess -Name "context" -Path "powershell.exe" -Arguments @("-NoExit", "-Command", "cd '$RootDir'; cargo run $BuildFlag -p wireframe-ai-context-core") -WorkingDirectory $RootDir
+        if ($ctx) {
+            Write-Ok "Context module started (PID $($ctx.Id))"
         }
     } catch {
-        Write-Warn "Failed to start orchestrator: $($_.Exception.Message)"
+        Write-Warn "Failed to start context module: $($_.Exception.Message)"
     }
     Start-Sleep -Seconds 1
-} else {
-    Write-Ok "Orchestrator skipped (--SkipOrchestrator)"
-}
 
-# Sandbox
-Write-InfoMsg "Starting sandbox..."
-try {
-    $sandbox = Start-TrackedProcess -Name "sandbox" -Path "powershell.exe" -Arguments @("-NoExit", "-Command", "cd '$RootDir'; cargo run $BuildFlag -p wireframe-ai-sandbox-core") -WorkingDirectory $RootDir
-    if ($sandbox) {
-        Write-Ok "Sandbox started (PID $($sandbox.Id))"
+    # Orchestrator (optional)
+    if (-not $SkipOrchestrator) {
+        Write-InfoMsg "Starting orchestrator..."
+        try {
+            $orch = Start-TrackedProcess -Name "orchestrator" -Path "powershell.exe" -Arguments @("-NoExit", "-Command", "cd '$RootDir'; cargo run $BuildFlag -p wireframe-ai-orchestrator-core") -WorkingDirectory $RootDir
+            if ($orch) {
+                Write-Ok "Orchestrator started (PID $($orch.Id))"
+            }
+        } catch {
+            Write-Warn "Failed to start orchestrator: $($_.Exception.Message)"
+        }
+        Start-Sleep -Seconds 1
+    } else {
+        Write-Ok "Orchestrator skipped (--SkipOrchestrator)"
     }
-} catch {
-    Write-Warn "Failed to start sandbox: $($_.Exception.Message)"
-}
-Start-Sleep -Seconds 1
 
-# Python adapter (optional) — via module
-if (-not $SkipAdapter) {
-    Write-InfoMsg "Starting Python adapter..."
+    # Sandbox
+    Write-InfoMsg "Starting sandbox..."
     try {
-        $sdkDir = Join-Path (Join-Path $RootDir "sdk") "agentic-sdk-py\src"
-        $adapterDir = Join-Path (Join-Path $RootDir "adapter") "python\src"
-        $pythonPath = "$sdkDir;$adapterDir"
-        $adapter = Start-TrackedProcess -Name "adapter" -Path "powershell.exe" -Arguments @("-NoExit", "-Command", "`$env:PYTHONPATH='$pythonPath'; cd '$RootDir'; python -m adapter") -WorkingDirectory $RootDir
-        if ($adapter) {
-            Write-Ok "Python adapter started (PID $($adapter.Id))"
+        $sandbox = Start-TrackedProcess -Name "sandbox" -Path "powershell.exe" -Arguments @("-NoExit", "-Command", "cd '$RootDir'; cargo run $BuildFlag -p wireframe-ai-sandbox-core") -WorkingDirectory $RootDir
+        if ($sandbox) {
+            Write-Ok "Sandbox started (PID $($sandbox.Id))"
         }
     } catch {
-        Write-Warn "Failed to start Python adapter: $($_.Exception.Message)"
+        Write-Warn "Failed to start sandbox: $($_.Exception.Message)"
     }
     Start-Sleep -Seconds 1
-} else {
-    Write-Ok "Python adapter skipped (--SkipAdapter)"
+
+    # Python adapter (optional) — via module
+    if (-not $SkipAdapter) {
+        Write-InfoMsg "Starting Python adapter..."
+        try {
+            $sdkDir = Join-Path (Join-Path $RootDir "sdk") "agentic-sdk-py\src"
+            $adapterDir = Join-Path (Join-Path $RootDir "adapter") "python\src"
+            $pythonPath = "$sdkDir;$adapterDir"
+            $adapter = Start-TrackedProcess -Name "adapter" -Path "powershell.exe" -Arguments @("-NoExit", "-Command", "`$env:PYTHONPATH='$pythonPath'; cd '$RootDir'; python -m adapter") -WorkingDirectory $RootDir
+            if ($adapter) {
+                Write-Ok "Python adapter started (PID $($adapter.Id))"
+            }
+        } catch {
+            Write-Warn "Failed to start Python adapter: $($_.Exception.Message)"
+        }
+        Start-Sleep -Seconds 1
+    } else {
+        Write-Ok "Python adapter skipped (--SkipAdapter)"
+    }
 }
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 Write-Step "Launch summary"
 Write-Host ""
-Write-Host "  All modules started in separate windows." -ForegroundColor $global:ScriptColors.Label
-Write-Host "  Check each window for module status." -ForegroundColor $global:ScriptColors.Label
+if ($psmuxAvailable) {
+    Write-Host "  All modules started in psmux panes (single window)." -ForegroundColor $global:ScriptColors.Label
+    Write-Host "  Use psmux keybindings to navigate between panes." -ForegroundColor $global:ScriptColors.Label
+} else {
+    Write-Host "  All modules started in separate windows." -ForegroundColor $global:ScriptColors.Label
+    Write-Host "  Check each window for module status." -ForegroundColor $global:ScriptColors.Label
+}
 Write-Host ""
 Write-Host "  -----------------------------------------------------" -ForegroundColor $global:ScriptColors.Label
 Write-Host ""

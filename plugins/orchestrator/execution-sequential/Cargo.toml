@@ -7,10 +7,13 @@ description = "Sequential execution strategy for orchestrator"
 [dependencies]
 agentic-sdk = { workspace = true }
 async-trait = { workspace = true }
+async-nats = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
+tokio = { workspace = true, features = ["sync", "time"] }
+futures = "0.3"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

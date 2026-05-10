@@ -52,9 +52,9 @@ impl InputHandler {
     }
 
     /// Start reading input events
-    pub fn run(&self) -> Result<()> {
+    pub fn run(&mut self) -> Result<()> {
         loop {
-            if event::poll(std::time::Duration::from_millis(100))? {
+            if event::poll(std::time::Duration::from_millis(16))? {
                 if let Event::Key(key) = event::read()? {
                     let event = self.map_key_event(key);
                     if event.is_quit() {

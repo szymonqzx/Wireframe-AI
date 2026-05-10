@@ -944,16 +944,22 @@ async fn process_message(
     state: &Arc<AdapterState>,
     client: &async_nats::Client,
 ) -> Result<()> {
+    info!("Received message on subject: {}", message.subject);
+    info!("Message payload size: {} bytes", message.payload.len());
+
     let envelope: Envelope<serde_json::Value> = match serde_json::from_slice(&message.payload) {
         Ok(env) => env,
         Err(e) => {
             error!("Failed to deserialize envelope: {}", e);
+            error!("Payload preview: {}", String::from_utf8_lossy(&message.payload[..message.payload.len().min(200)]));
             return Ok(());
         }
     };
 
+    info!("Envelope topic: {}", envelope.topic);
+
     if envelope.topic != AGENT_JOB_TOPIC {
-        error!("Unexpected topic: {}", envelope.topic);
+        error!("Unexpected topic: {} (expected {})", envelope.topic, AGENT_JOB_TOPIC);
         return Ok(());
     }
 
