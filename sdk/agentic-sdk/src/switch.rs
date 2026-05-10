@@ -7,8 +7,8 @@ use crate::compatibility::{CompatibilityChecker, CompatibilityResult};
 use crate::registry::ModuleRegistry;
 use anyhow::Result;
 use async_nats::Client;
-use serde::{Deserialize, Serialize};
 use futures::StreamExt;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{error, info, warn};
@@ -128,7 +128,10 @@ impl ModuleSwitchCoordinator {
             match client.subscribe("sys.module.online").await {
                 Ok(sub) => Some(sub),
                 Err(e) => {
-                    warn!("Failed to subscribe to sys.module.online: {}, will use fallback timeout", e);
+                    warn!(
+                        "Failed to subscribe to sys.module.online: {}, will use fallback timeout",
+                        e
+                    );
                     None
                 }
             }
@@ -145,8 +148,14 @@ impl ModuleSwitchCoordinator {
         // Wait for new module to come online using NATS-based detection
         info!("Waiting for new module to come online via NATS");
         if let Some(sub) = subscriber {
-            if let Err(e) = self.wait_for_module_online_with_subscription(&request.new_module, sub).await {
-                warn!("Failed to detect module online via NATS: {}, using fallback timeout", e);
+            if let Err(e) = self
+                .wait_for_module_online_with_subscription(&request.new_module, sub)
+                .await
+            {
+                warn!(
+                    "Failed to detect module online via NATS: {}, using fallback timeout",
+                    e
+                );
                 tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
             }
         } else {
@@ -239,13 +248,18 @@ impl ModuleSwitchCoordinator {
         module_id: &str,
         _metadata: &crate::registry::ModuleMetadata,
     ) -> Result<()> {
-        let client = self.nats_client.as_ref()
+        let client = self
+            .nats_client
+            .as_ref()
             .ok_or_else(|| anyhow::anyhow!("NATS client not configured for online detection"))?;
 
-        let subscriber = client.subscribe("sys.module.online").await
+        let subscriber = client
+            .subscribe("sys.module.online")
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to subscribe to sys.module.online: {}", e))?;
 
-        self.wait_for_module_online_with_subscription(module_id, subscriber).await
+        self.wait_for_module_online_with_subscription(module_id, subscriber)
+            .await
     }
 
     /// Wait for a module to come online using a pre-existing NATS subscription.
@@ -258,12 +272,11 @@ impl ModuleSwitchCoordinator {
         let start = std::time::Instant::now();
 
         while start.elapsed() < timeout {
-            match tokio::time::timeout(
-                tokio::time::Duration::from_secs(1),
-                subscriber.next()
-            ).await {
+            match tokio::time::timeout(tokio::time::Duration::from_secs(1), subscriber.next()).await
+            {
                 Ok(Some(msg)) => {
-                    if let Ok(envelope) = serde_json::from_slice::<serde_json::Value>(&msg.payload) {
+                    if let Ok(envelope) = serde_json::from_slice::<serde_json::Value>(&msg.payload)
+                    {
                         // The sys.module.online message is wrapped in an Envelope,
                         // so module_id lives under the `payload` field. Fall back to
                         // a top-level lookup for robustness against unwrapped messages.
@@ -292,7 +305,10 @@ impl ModuleSwitchCoordinator {
             }
         }
 
-        Err(anyhow::anyhow!("Timeout waiting for module {} to come online", module_id))
+        Err(anyhow::anyhow!(
+            "Timeout waiting for module {} to come online",
+            module_id
+        ))
     }
 
     /// Rollback a failed switch.

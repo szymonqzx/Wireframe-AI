@@ -315,19 +315,13 @@ impl MessageBuffer {
     }
 
     /// Flush the buffer (internal).
-    async fn flush_buffer(
-        buffer: &Arc<Mutex<MessageBufferInner>>,
-        nc: &Arc<Client>,
-    ) {
+    async fn flush_buffer(buffer: &Arc<Mutex<MessageBufferInner>>, nc: &Arc<Client>) {
         let mut buffer = buffer.lock().await;
         Self::flush_buffer_unlocked(&mut buffer, nc).await;
     }
 
     /// Flush the buffer with lock already held (internal).
-    async fn flush_buffer_unlocked(
-        buffer: &mut MessageBufferInner,
-        nc: &Arc<Client>,
-    ) {
+    async fn flush_buffer_unlocked(buffer: &mut MessageBufferInner, nc: &Arc<Client>) {
         if buffer.is_empty() {
             return;
         }
@@ -338,9 +332,7 @@ impl MessageBuffer {
         tokio::spawn(async move {
             let futures: Vec<_> = messages
                 .into_iter()
-                .map(|(subject, data)| {
-                    nc_clone.publish(subject, data.into())
-                })
+                .map(|(subject, data)| nc_clone.publish(subject, data.into()))
                 .collect();
 
             let results = futures::future::join_all(futures).await;
