@@ -42,12 +42,13 @@ impl ProviderRouter {
             if let Some(provider) = self.registry.get(provider_name) {
                 let status = provider.status();
                 if matches!(status.availability, Availability::Ready) {
-                    let metadata = provider.describe();
-                    if required_features.iter().all(|feat| {
-                        metadata.capabilities.features.contains(feat)
-                            || metadata.capabilities.core_methods.contains(feat)
-                    }) {
-                        return Ok(provider_name.clone());
+                    if let Some(metadata) = self.registry.metadata(provider_name) {
+                        if required_features.iter().all(|feat| {
+                            metadata.capabilities.features.contains(feat)
+                                || metadata.capabilities.core_methods.contains(feat)
+                        }) {
+                            return Ok(provider_name.clone());
+                        }
                     }
                 }
             }
@@ -58,12 +59,13 @@ impl ProviderRouter {
             if let Some(provider) = self.registry.get(&provider_name) {
                 let status = provider.status();
                 if matches!(status.availability, Availability::Ready) {
-                    let metadata = provider.describe();
-                    if required_features.iter().all(|feat| {
-                        metadata.capabilities.features.contains(feat)
-                            || metadata.capabilities.core_methods.contains(feat)
-                    }) {
-                        return Ok(provider_name.clone());
+                    if let Some(metadata) = self.registry.metadata(&provider_name) {
+                        if required_features.iter().all(|feat| {
+                            metadata.capabilities.features.contains(feat)
+                                || metadata.capabilities.core_methods.contains(feat)
+                        }) {
+                            return Ok(provider_name.clone());
+                        }
                     }
                 }
             }
@@ -84,13 +86,14 @@ impl ProviderRouter {
 
         for provider_name in self.registry.list() {
             if let Some(provider) = self.registry.get(&provider_name) {
-                let metadata = provider.describe();
-                if required_features.iter().all(|feat| {
-                    metadata.capabilities.features.contains(feat)
-                        || metadata.capabilities.core_methods.contains(feat)
-                }) {
-                    let cost = provider.cost_per_1k_tokens();
-                    candidates.push((provider_name, cost));
+                if let Some(metadata) = self.registry.metadata(&provider_name) {
+                    if required_features.iter().all(|feat| {
+                        metadata.capabilities.features.contains(feat)
+                            || metadata.capabilities.core_methods.contains(feat)
+                    }) {
+                        let cost = provider.cost_per_1k_tokens();
+                        candidates.push((provider_name, cost));
+                    }
                 }
             }
         }
@@ -120,18 +123,19 @@ impl ProviderRouter {
 
         for provider_name in self.registry.list() {
             if let Some(provider) = self.registry.get(&provider_name) {
-                let metadata = provider.describe();
-                if required_features.iter().all(|feat| {
-                    metadata.capabilities.features.contains(feat)
-                        || metadata.capabilities.core_methods.contains(feat)
-                }) {
-                    let status = provider.status();
-                    let score = match status.availability {
-                        Availability::Ready => 2,
-                        Availability::Degraded => 1,
-                        Availability::Unavailable => 0,
-                    };
-                    candidates.push((provider_name, score));
+                if let Some(metadata) = self.registry.metadata(&provider_name) {
+                    if required_features.iter().all(|feat| {
+                        metadata.capabilities.features.contains(feat)
+                            || metadata.capabilities.core_methods.contains(feat)
+                    }) {
+                        let status = provider.status();
+                        let score = match status.availability {
+                            Availability::Ready => 2,
+                            Availability::Degraded => 1,
+                            Availability::Unavailable => 0,
+                        };
+                        candidates.push((provider_name, score));
+                    }
                 }
             }
         }
