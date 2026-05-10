@@ -201,3 +201,64 @@ impl ExecutionStrategy for ParallelExecution {
         Ok(results)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpListener;
+
+    async fn spawn_mock_nats() -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let url = format!("nats://{}", addr);
+
+        tokio::spawn(async move {
+            while let Ok((mut socket, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    // Send INFO
+                    let info = r#"INFO {"server_id":"mock","version":"2.9.11","proto":1,"go":"go1.19.4","host":"127.0.0.1","port":4222,"headers":true,"max_payload":1048576,"client_id":1,"client_ip":"127.0.0.1"}"#;
+                    let _ = socket.write_all(format!("{}\r\n", info).as_bytes()).await;
+
+                    let mut buf = [0u8; 1024];
+                    while let Ok(n) = socket.read(&mut buf).await {
+                        if n == 0 {
+                            break;
+                        }
+                        let msg = String::from_utf8_lossy(&buf[..n]);
+                        if msg.contains("PING") {
+                            let _ = socket.write_all(b"PONG\r\n").await;
+                        }
+                    }
+                });
+            }
+        });
+
+        url
+    }
+
+    #[tokio::test]
+    async fn test_new_sets_default_timeout() {
+        let url = spawn_mock_nats().await;
+        let client = async_nats::connect(&url).await.unwrap();
+        let exec = ParallelExecution::new(client);
+        assert_eq!(exec.result_timeout_secs, 600);
+    }
+
+    #[tokio::test]
+    async fn test_with_timeout_sets_custom_timeout() {
+        let url = spawn_mock_nats().await;
+        let client = async_nats::connect(&url).await.unwrap();
+        let exec = ParallelExecution::with_timeout(client, 120);
+        assert_eq!(exec.result_timeout_secs, 120);
+    }
+
+    #[tokio::test]
+    async fn test_nats_client_getter() {
+        let url = spawn_mock_nats().await;
+        let client = async_nats::connect(&url).await.unwrap();
+        let exec = ParallelExecution::new(client);
+        // We verify that calling nats_client() doesn't panic and returns a reference
+        let _ = exec.nats_client();
+    }
+}
