@@ -152,3 +152,22 @@ impl ProviderRouter {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new() {
+        let registry = Arc::new(ProviderDiscoveryRegistry::new());
+        let fallback_chain = vec!["provider1".to_string(), "provider2".to_string()];
+
+        let router = ProviderRouter::new(registry, fallback_chain.clone());
+
+        assert_eq!(router.fallback_chain, fallback_chain);
+        assert!(matches!(
+            router.strategy,
+            RoutingStrategy::DefaultWithFallback
+        ));
+    }
+}

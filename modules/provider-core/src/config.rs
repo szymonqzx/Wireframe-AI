@@ -38,8 +38,10 @@ pub struct ProviderRegistryConfig {
 /// Routing strategy for provider selection.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum RoutingStrategy {
     /// Always use the default provider, fallback on error
+    #[default]
     DefaultWithFallback,
     /// Round-robin across available providers
     RoundRobin,
@@ -47,12 +49,6 @@ pub enum RoutingStrategy {
     LowestCost,
     /// Select provider with highest availability score
     HighestAvailability,
-}
-
-impl Default for RoutingStrategy {
-    fn default() -> Self {
-        RoutingStrategy::DefaultWithFallback
-    }
 }
 
 impl Default for ProviderRegistryConfig {
