@@ -18,11 +18,13 @@ pub fn fan_out(enriched: &TaskEnriched, sub_tasks: Vec<String>) -> Vec<Envelope<
         priority: 5,
         tags: [("workflow".to_string(), "fan_out".to_string())].into(),
     };
+    let correlation_parent = enriched.correlation_id.clone();
+    let context = enriched.context.clone();
 
     for (idx, sub_task) in sub_tasks.into_iter().enumerate() {
         let job = AgentJob {
-            job_id: format!("{}-{}", enriched.correlation_id, idx),
-            correlation_parent: enriched.correlation_id.clone(),
+            job_id: format!("{}-{}", correlation_parent, idx),
+            correlation_parent: correlation_parent.clone(),
             task: crate::message_types::TaskDescription {
                 user_input: sub_task.clone(),
                 sub_task: Some(crate::message_types::SubTask {
@@ -33,7 +35,7 @@ pub fn fan_out(enriched: &TaskEnriched, sub_tasks: Vec<String>) -> Vec<Envelope<
                 output_format: None,
                 user_constraints: vec![],
             },
-            context: enriched.context.clone(),
+            context: context.clone(),
             available_tool_capabilities: vec![],
             constraints: Default::default(),
             model_config: Default::default(),
