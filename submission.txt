@@ -1,0 +1,6 @@
+🧹 [sdk] Remove unused max_age field from MessageBuffer struct
+
+🎯 **What:** Removed the unused `max_age` field from the `MessageBuffer` struct in `sdk/agentic-sdk/src/module.rs`.
+💡 **Why:** The field was completely unused after struct initialization and was manually marked with `#[allow(dead_code)]`. Removing it cleans up the struct definition. Note that `max_age` is still used functionally as a parameter for setting up the flush interval task.
+✅ **Verification:** Verified `cargo fmt`, `cargo clippy` and `cargo test` pass and ensured existing parameter functionality remained unbroken.
+✨ **Result:** A cleaner `MessageBuffer` struct without ignored dead code fields.

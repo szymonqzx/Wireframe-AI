@@ -337,8 +337,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     // Log Langfuse availability
-    if std::env::var("LANGFUSE_PUBLIC_KEY").is_ok()
-        && std::env::var("LANGFUSE_SECRET_KEY").is_ok()
+    if std::env::var("LANGFUSE_PUBLIC_KEY").is_ok() && std::env::var("LANGFUSE_SECRET_KEY").is_ok()
     {
         tracing::info!("Langfuse credentials detected - modules can use langfuse-sdk for tracing");
     }

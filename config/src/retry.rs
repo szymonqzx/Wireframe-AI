@@ -118,15 +118,13 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
     use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_retry_with_backoff_success() {
         let config = RetryConfig::default();
-        let result = retry_with_backoff(config, || async {
-            Ok::<u32, std::io::Error>(42)
-        }).await;
+        let result = retry_with_backoff(config, || async { Ok::<u32, std::io::Error>(42) }).await;
 
         assert_eq!(result.unwrap(), 42);
     }
@@ -152,7 +150,8 @@ mod tests {
                     Ok(42)
                 }
             }
-        }).await;
+        })
+        .await;
 
         assert_eq!(result.unwrap(), 42);
         assert_eq!(attempts.load(Ordering::SeqCst), 3);
@@ -168,8 +167,12 @@ mod tests {
         };
 
         let result = retry_with_backoff(config, || async {
-            Err::<u32, _>(std::io::Error::new(std::io::ErrorKind::Other, "permanent failure"))
-        }).await;
+            Err::<u32, _>(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "permanent failure",
+            ))
+        })
+        .await;
 
         let err = result.unwrap_err().to_string();
         assert!(err.contains("Operation failed after 2 attempts"));

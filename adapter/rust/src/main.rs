@@ -1343,212 +1343,212 @@ mod tests {
 
     // TODO: Re-enable when execute_tool_direct is made accessible for testing
     /*
-    /// Helper to create a minimal AdapterState for file operation tests.
-    fn test_adapter_state(allowed_base_dir: Option<PathBuf>) -> AdapterState {
-        AdapterState {
-            providers: HashMap::new(),
-            session_manager: SessionManager::new(),
-            execution_mode: ExecutionMode::Direct,
-            selfdev_enabled: false,
-            source_root: None,
-            binary_path: None,
-            allowed_base_dir,
-            sandbox_client: tokio::sync::Mutex::new(None),
-        }
-    }
+     /// Helper to create a minimal AdapterState for file operation tests.
+     fn test_adapter_state(allowed_base_dir: Option<PathBuf>) -> AdapterState {
+         AdapterState {
+             providers: HashMap::new(),
+             session_manager: SessionManager::new(),
+             execution_mode: ExecutionMode::Direct,
+             selfdev_enabled: false,
+             source_root: None,
+             binary_path: None,
+             allowed_base_dir,
+             sandbox_client: tokio::sync::Mutex::new(None),
+         }
+     }
 
-    // // #[tokio::test]
-    async fn test_execute_tool_direct_file_write_and_read() {
-        let temp_dir = std::env::temp_dir().join("wireframe_test_file_ops");
-        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
-        tokio::fs::create_dir_all(&temp_dir).await.unwrap();
+     // // #[tokio::test]
+     async fn test_execute_tool_direct_file_write_and_read() {
+         let temp_dir = std::env::temp_dir().join("wireframe_test_file_ops");
+         let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+         tokio::fs::create_dir_all(&temp_dir).await.unwrap();
 
-        let state = test_adapter_state(Some(temp_dir.clone()));
-        let file_path = temp_dir.join("test.txt");
-        let file_path_str = file_path.to_string_lossy().to_string();
+         let state = test_adapter_state(Some(temp_dir.clone()));
+         let file_path = temp_dir.join("test.txt");
+         let file_path_str = file_path.to_string_lossy().to_string();
 
-        // Write file
-        let write_params = serde_json::json!({
-            "path": file_path_str,
-            "content": "Hello, Wireframe AI!"
-        });
-        let write_result = execute_tool_direct("file_write", &write_params, &state).await;
-        assert_eq!(
-            write_result.get("success").and_then(|v| v.as_bool()),
-            Some(true),
-            "file_write failed: {:?}",
-            write_result
-        );
+         // Write file
+         let write_params = serde_json::json!({
+             "path": file_path_str,
+             "content": "Hello, Wireframe AI!"
+         });
+         let write_result = execute_tool_direct("file_write", &write_params, &state).await;
+         assert_eq!(
+             write_result.get("success").and_then(|v| v.as_bool()),
+             Some(true),
+             "file_write failed: {:?}",
+             write_result
+         );
 
-        // Read file
-        let read_params = serde_json::json!({"path": file_path_str});
-        let read_result = execute_tool_direct("file_read", &read_params, &state).await;
-        assert_eq!(
-            read_result.get("content").and_then(|v| v.as_str()),
-            Some("Hello, Wireframe AI!"),
-            "file_read failed: {:?}",
-            read_result
-        );
+         // Read file
+         let read_params = serde_json::json!({"path": file_path_str});
+         let read_result = execute_tool_direct("file_read", &read_params, &state).await;
+         assert_eq!(
+             read_result.get("content").and_then(|v| v.as_str()),
+             Some("Hello, Wireframe AI!"),
+             "file_read failed: {:?}",
+             read_result
+         );
 
-        // Cleanup
-        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
-    }
+         // Cleanup
+         let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+     }
 
-    // // #[t#[tokio::test]
-    async fn test_execute_tool_direct_file_list() {
-        let temp_dir = std::env::temp_dir().join("wireframe_test_list");
-        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
-        tokio::fs::create_dir_all(&temp_dir).await.unwrap();
-        tokio::fs::write(temp_dir.join("a.txt"), "a").await.unwrap();
-        tokio::fs::write(temp_dir.join("b.txt"), "b").await.unwrap();
+     // // #[t#[tokio::test]
+     async fn test_execute_tool_direct_file_list() {
+         let temp_dir = std::env::temp_dir().join("wireframe_test_list");
+         let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+         tokio::fs::create_dir_all(&temp_dir).await.unwrap();
+         tokio::fs::write(temp_dir.join("a.txt"), "a").await.unwrap();
+         tokio::fs::write(temp_dir.join("b.txt"), "b").await.unwrap();
 
-        let state = test_adapter_state(Some(temp_dir.clone()));
-        let params = serde_json::json!({"path": temp_dir.to_string_lossy().to_string()});
-        let result = execute_tool_direct("file_list", &params, &state).await;
+         let state = test_adapter_state(Some(temp_dir.clone()));
+         let params = serde_json::json!({"path": temp_dir.to_string_lossy().to_string()});
+         let result = execute_tool_direct("file_list", &params, &state).await;
 
-        let files = result
-            .get("files")
-            .and_then(|v| v.as_array())
-            .expect("Expected files array");
-        let file_names: Vec<String> = files
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .collect();
-        assert!(file_names.contains(&"a.txt".to_string()));
-        assert!(file_names.contains(&"b.txt".to_string()));
+         let files = result
+             .get("files")
+             .and_then(|v| v.as_array())
+             .expect("Expected files array");
+         let file_names: Vec<String> = files
+             .iter()
+             .filter_map(|v| v.as_str().map(|s| s.to_string()))
+             .collect();
+         assert!(file_names.contains(&"a.txt".to_string()));
+         assert!(file_names.contains(&"b.txt".to_string()));
 
-        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
-    }
+         let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+     }
 
-    #[t#[tokio::test]
-    async fn test_execute_tool_direct_file_read_path_traversal() {
-        let safe_dir = std::env::temp_dir().join("wireframe_test_safe");
-        let _ = tokio::fs::remove_dir_all(&safe_dir).await;
-        tokio::fs::create_dir_all(&safe_dir).await.unwrap();
+     #[t#[tokio::test]
+     async fn test_execute_tool_direct_file_read_path_traversal() {
+         let safe_dir = std::env::temp_dir().join("wireframe_test_safe");
+         let _ = tokio::fs::remove_dir_all(&safe_dir).await;
+         tokio::fs::create_dir_all(&safe_dir).await.unwrap();
 
-        let state = test_adapter_state(Some(safe_dir.clone()));
-        let params = serde_json::json!({"path": "/etc/passwd"});
-        let result = execute_tool_direct("file_read", &params, &state).await;
-        assert!(
-            result.get("error").is_some(),
-            "Expected error for path traversal, got: {:?}",
-            result
-        );
+         let state = test_adapter_state(Some(safe_dir.clone()));
+         let params = serde_json::json!({"path": "/etc/passwd"});
+         let result = execute_tool_direct("file_read", &params, &state).await;
+         assert!(
+             result.get("error").is_some(),
+             "Expected error for path traversal, got: {:?}",
+             result
+         );
 
-        let _ = tokio::fs::remove_dir_all(&safe_dir).await;
-    }
+         let _ = tokio::fs::remove_dir_all(&safe_dir).await;
+     }
 
-    // -------------------------------------------------------------------------
-    // validate_path_for_write
-    // -------------------------------------------------------------------------
+     // -------------------------------------------------------------------------
+     // validate_path_for_write
+     // -------------------------------------------------------------------------
 
-    #[test]
-    fn test_validate_path_for_write_traversal_blocked() {
-        assert!(validate_path_for_write("../etc/passwd", None).is_err());
-        assert!(validate_path_for_write("foo/../../bar", None).is_err());
-        assert!(validate_path_for_write("~/.ssh/id_rsa", None).is_err());
-    }
+     #[test]
+     fn test_validate_path_for_write_traversal_blocked() {
+         assert!(validate_path_for_write("../etc/passwd", None).is_err());
+         assert!(validate_path_for_write("foo/../../bar", None).is_err());
+         assert!(validate_path_for_write("~/.ssh/id_rsa", None).is_err());
+     }
 
-    #[tokio::test]
-    async fn test_validate_path_for_write_nonexistent_file_ok() {
-        let temp_dir = std::env::temp_dir().join("wireframe_test_write");
-        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
-        tokio::fs::create_dir_all(&temp_dir).await.unwrap();
+     #[tokio::test]
+     async fn test_validate_path_for_write_nonexistent_file_ok() {
+         let temp_dir = std::env::temp_dir().join("wireframe_test_write");
+         let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+         tokio::fs::create_dir_all(&temp_dir).await.unwrap();
 
-        let result = validate_path_for_write(
-            &temp_dir.join("new_file.txt").to_string_lossy(),
-            Some(temp_dir.as_path()),
-        );
-        assert!(result.is_ok());
+         let result = validate_path_for_write(
+             &temp_dir.join("new_file.txt").to_string_lossy(),
+             Some(temp_dir.as_path()),
+         );
+         assert!(result.is_ok());
 
-        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
-    }
+         let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+     }
 
-    #[tokio::test]
-    async fn test_validate_path_for_write_outside_base_blocked() {
-        let safe_dir = std::env::temp_dir().join("wireframe_test_write_safe");
-        let _ = tokio::fs::remove_dir_all(&safe_dir).await;
-        tokio::fs::create_dir_all(&safe_dir).await.unwrap();
+     #[tokio::test]
+     async fn test_validate_path_for_write_outside_base_blocked() {
+         let safe_dir = std::env::temp_dir().join("wireframe_test_write_safe");
+         let _ = tokio::fs::remove_dir_all(&safe_dir).await;
+         tokio::fs::create_dir_all(&safe_dir).await.unwrap();
 
-        let result = validate_path_for_write("/etc/passwd", Some(safe_dir.as_path()));
-        assert!(result.is_err());
+         let result = validate_path_for_write("/etc/passwd", Some(safe_dir.as_path()));
+         assert!(result.is_err());
 
-        let _ = tokio::fs::remove_dir_all(&safe_dir).await;
-    }
+         let _ = tokio::fs::remove_dir_all(&safe_dir).await;
+     }
 
-    #[tokio::test]
-    async fn test_execute_tool_direct_shell_exec_echo() {
-        let state = test_adapter_state(None);
-        let params = serde_json::json!({"command": "echo hello"});
-        let result = execute_tool_direct("shell_exec", &params, &state).await;
-        assert_eq!(
-            result.get("success").and_then(|v| v.as_bool()),
-            Some(true),
-            "shell_exec failed: {:?}",
-            result
-        );
-        let stdout = result.get("stdout").and_then(|v| v.as_str()).unwrap_or("");
-        assert!(
-            stdout.contains("hello"),
-            "Expected 'hello' in stdout: {}",
-            stdout
-        );
-    }
+     #[tokio::test]
+     async fn test_execute_tool_direct_shell_exec_echo() {
+         let state = test_adapter_state(None);
+         let params = serde_json::json!({"command": "echo hello"});
+         let result = execute_tool_direct("shell_exec", &params, &state).await;
+         assert_eq!(
+             result.get("success").and_then(|v| v.as_bool()),
+             Some(true),
+             "shell_exec failed: {:?}",
+             result
+         );
+         let stdout = result.get("stdout").and_then(|v| v.as_str()).unwrap_or("");
+         assert!(
+             stdout.contains("hello"),
+             "Expected 'hello' in stdout: {}",
+             stdout
+         );
+     }
 
-   tokio::test]
-    async fn test_execute_tool_direct_shell_exec_blocked() {
-        let state = test_adapter_state(None);
-        let params = serde_json::json!({"command": "bash -c echo hello"});
-        let result = execute_tool_direct("shell_exec", &params, &state).await;
-        assert!(
-            result.get("error").is_some(),
-            "Expected error for blocked command, got: {:?}",
-            result
-        );
-    }
+    tokio::test]
+     async fn test_execute_tool_direct_shell_exec_blocked() {
+         let state = test_adapter_state(None);
+         let params = serde_json::json!({"command": "bash -c echo hello"});
+         let result = execute_tool_direct("shell_exec", &params, &state).await;
+         assert!(
+             result.get("error").is_some(),
+             "Expected error for blocked command, got: {:?}",
+             result
+         );
+     }
 
-    okio::test]
-    async fn test_execute_tool_direct_unknown_tool() {
-        let state = test_adapter_state(None);
-        let params = serde_json::json!({"foo": "bar"});
-        let result = execute_tool_direct("unknown_tool", &params, &state).await;
-        assert!(
-            result.get("error").is_some(),
-            "Expected error for unknown tool, got: {:?}",
-            result
-        );
-    }
+     okio::test]
+     async fn test_execute_tool_direct_unknown_tool() {
+         let state = test_adapter_state(None);
+         let params = serde_json::json!({"foo": "bar"});
+         let result = execute_tool_direct("unknown_tool", &params, &state).await;
+         assert!(
+             result.get("error").is_some(),
+             "Expected error for unknown tool, got: {:?}",
+             result
+         );
+     }
 
-    #[tokio::test]
-    async fn test_execute_tool_direct_missing_params() {
-        let state = test_adapter_state(None);
-        let result = execute_tool_direct("file_read", &serde_json::json!({}), &state).await;
-        assert!(
-            result.get("error").is_some(),
-            "Expected error for missing params, got: {:?}",
-            result
-        );
-    }
+     #[tokio::test]
+     async fn test_execute_tool_direct_missing_params() {
+         let state = test_adapter_state(None);
+         let result = execute_tool_direct("file_read", &serde_json::json!({}), &state).await;
+         assert!(
+             result.get("error").is_some(),
+             "Expected error for missing params, got: {:?}",
+             result
+         );
+     }
 
-    // -------------------------------------------------------------------------
-    // detect_platform_shell
-    // -------------------------------------------------------------------------
+     // -------------------------------------------------------------------------
+     // detect_platform_shell
+     // -------------------------------------------------------------------------
 
-    // #[test]
-    fn test_detect_platform_shell_returns_nonempty() {
-        let (shell, flag) = detect_platform_shell();
-        assert!(!shell.is_empty(), "Shell should not be empty");
-        assert!(!flag.is_empty(), "Flag should not be empty");
-    }
+     // #[test]
+     fn test_detect_platform_shell_returns_nonempty() {
+         let (shell, flag) = detect_platform_shell();
+         assert!(!shell.is_empty(), "Shell should not be empty");
+         assert!(!flag.is_empty(), "Flag should not be empty");
+     }
 
-    // #[test]
-    fn test_detect_platform_shell_explicit_override() {
-        // Set explicit override and verify it's used
-        env::set_var("WIREFRAME_AI_SHELL", "custom_shell");
-        let (shell, flag) = detect_platform_shell();
-        assert_eq!(shell, "custom_shell");
-        assert_eq!(flag, "-c");
-        env::remove_var("WIREFRAME_AI_SHELL");
-    }
-    */
+     // #[test]
+     fn test_detect_platform_shell_explicit_override() {
+         // Set explicit override and verify it's used
+         env::set_var("WIREFRAME_AI_SHELL", "custom_shell");
+         let (shell, flag) = detect_platform_shell();
+         assert_eq!(shell, "custom_shell");
+         assert_eq!(flag, "-c");
+         env::remove_var("WIREFRAME_AI_SHELL");
+     }
+     */
 }

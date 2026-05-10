@@ -1,10 +1,14 @@
 use agentic_sdk::envelope::Envelope;
-use agentic_sdk::message_types::{ContextPackage, TaskComplete, TaskEnriched, TaskSubmitted, ChatMessage, MemoryChunk};
-use agentic_sdk::plugins::context::{EnrichmentStrategy, MemoryBackend, StorageBackend, StorageError, MemoryError};
+use agentic_sdk::message_types::{
+    ChatMessage, ContextPackage, MemoryChunk, TaskComplete, TaskEnriched, TaskSubmitted,
+};
+use agentic_sdk::plugins::context::{
+    EnrichmentStrategy, MemoryBackend, MemoryError, StorageBackend, StorageError,
+};
 use async_trait::async_trait;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::sync::{RwLock, Semaphore};
 use tracing::{error, info};
@@ -160,8 +164,11 @@ impl<T: Clone> LruCache<T> {
         if let Some(entry) = self.entries.get_mut(key) {
             // Check version-based invalidation
             if self.invalidation_strategy == InvalidationStrategy::VersionBased
-                || self.invalidation_strategy == InvalidationStrategy::Combined {
-                let global_ver = self.global_version.load(std::sync::atomic::Ordering::SeqCst);
+                || self.invalidation_strategy == InvalidationStrategy::Combined
+            {
+                let global_ver = self
+                    .global_version
+                    .load(std::sync::atomic::Ordering::SeqCst);
                 if entry.version() < global_ver {
                     self.entries.remove(key);
                     return None;
@@ -195,7 +202,9 @@ impl<T: Clone> LruCache<T> {
             }
         }
 
-        let current_version = self.global_version.load(std::sync::atomic::Ordering::SeqCst);
+        let current_version = self
+            .global_version
+            .load(std::sync::atomic::Ordering::SeqCst);
         let mut entry = CacheEntry::new(value);
         entry.version = current_version;
         self.entries.insert(key, entry);
@@ -417,8 +426,11 @@ impl ContextCore {
         }
 
         // 5. Run enrichment pipeline with caching
-        let enrichment_key = format!("enrich:{}:{}", task.session_id,
-            task.user_input.chars().take(50).collect::<String>());
+        let enrichment_key = format!(
+            "enrich:{}:{}",
+            task.session_id,
+            task.user_input.chars().take(50).collect::<String>()
+        );
         let context = {
             let mut cache = self.enrichment_cache.write().await;
             if let Some(cached) = cache.get(&enrichment_key) {
@@ -511,7 +523,9 @@ impl StorageBackend for InMemoryStorage {
         content: &'a str,
     ) -> Result<(), StorageError> {
         let mut sessions = self.sessions.write().await;
-        let messages = sessions.entry(session_id.to_string()).or_insert_with(Vec::new);
+        let messages = sessions
+            .entry(session_id.to_string())
+            .or_insert_with(Vec::new);
         messages.push(ChatMessage {
             role: role.to_string(),
             content: content.to_string(),
@@ -582,7 +596,9 @@ impl MemoryBackend for InMemoryBackend {
         source: &'a str,
     ) -> Result<(), MemoryError> {
         let mut chunks = self.chunks.write().await;
-        let session_chunks = chunks.entry(session_id.to_string()).or_insert_with(Vec::new);
+        let session_chunks = chunks
+            .entry(session_id.to_string())
+            .or_insert_with(Vec::new);
         session_chunks.push(MemoryChunk {
             id: Uuid::new_v4().to_string(),
             content: content.to_string(),
