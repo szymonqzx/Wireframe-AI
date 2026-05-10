@@ -442,19 +442,23 @@ impl ContextCore {
                     max_context_tokens: self.max_context_tokens,
                 };
 
-                // Record baseline sizes so that when each plugin returns a full
-                // ContextPackage (clone of input + its own additions), we only
-                // merge the *delta* and don't duplicate the original data once
-                // per plugin.
+                // Record baseline sizes/values so that when each plugin returns
+                // a full ContextPackage (clone of input + its own additions),
+                // we only merge the *delta* and don't duplicate the original
+                // data once per plugin.
+                //
+                // NOTE: This is a fan-out execution model, not a chained
+                // pipeline. All plugins observe the same `ctx` snapshot and
+                // run concurrently via `join_all`. Plugins must be independent
+                // and primarily additive — see `EnrichmentStrategy` docs.
                 let base_memory_len = ctx.memory_chunks.len();
                 let base_session_len = ctx.session_history.len();
                 let base_readonly_len = ctx.readonly_files.len();
-                let base_env_keys: std::collections::HashSet<String> =
-                    ctx.safe_env.keys().cloned().collect();
+                let base_env: std::collections::HashMap<String, String> = ctx.safe_env.clone();
                 // Baseline scalar fields so we can detect plugin overrides.
                 // `join_all` preserves input order, so iterating results in
-                // order yields deterministic last-write-wins semantics that
-                // match the previous sequential pipeline.
+                // declaration order yields deterministic last-write-wins
+                // semantics for scalar fields and `safe_env` overrides.
                 let base_working_dir = ctx.working_dir.clone();
                 let base_max_context_tokens = ctx.max_context_tokens;
 
@@ -482,8 +486,19 @@ impl ContextCore {
                             .extend(enriched_ctx.readonly_files.drain(base_readonly_len..));
                     }
                     for (k, v) in enriched_ctx.safe_env {
-                        if !base_env_keys.contains(&k) {
-                            ctx.safe_env.insert(k, v);
+                        match base_env.get(&k) {
+                            // New key not present in the base context — always insert.
+                            None => {
+                                ctx.safe_env.insert(k, v);
+                            }
+                            // Key present in base, but plugin produced a
+                            // different value — treat as an explicit override
+                            // (last-writer-wins across plugins).
+                            Some(base_v) if base_v != &v => {
+                                ctx.safe_env.insert(k, v);
+                            }
+                            // Plugin returned the unchanged base value — skip.
+                            Some(_) => {}
                         }
                     }
                     // Propagate scalar field overrides (last writer wins).

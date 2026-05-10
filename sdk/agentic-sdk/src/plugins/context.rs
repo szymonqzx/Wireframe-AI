@@ -63,10 +63,26 @@ pub trait MemoryBackend: Send + Sync {
 /// Context enrichment strategy.
 ///
 /// Implementations add context to tasks (memory retrieval, file context,
-/// environment variables, etc.). Multiple strategies can be chained in a pipeline.
+/// environment variables, etc.).
+///
+/// # Execution model
+///
+/// Strategies are executed concurrently as a **fan-out** over the same
+/// `base_context` — they do **not** form a sequential pipeline where each
+/// strategy observes prior strategies' enrichments. Implementations MUST
+/// therefore be independent and SHOULD only *add* to the context (append
+/// to the collection fields or insert new `safe_env` keys). Modifications
+/// to items already present in `base_context` are not guaranteed to be
+/// observed by other strategies, and conflicting writes to scalar fields
+/// (`working_dir`, `max_context_tokens`) are resolved last-writer-wins in
+/// pipeline-declaration order.
 #[async_trait]
 pub trait EnrichmentStrategy: Plugin + Send + Sync {
     /// Enrich a task with additional context.
+    ///
+    /// Implementations should return a `ContextPackage` derived from
+    /// `base_context` with their own additions appended; only the delta
+    /// relative to `base_context` is merged into the final context.
     async fn enrich<'a>(
         &'a self,
         task: &'a TaskSubmitted,
