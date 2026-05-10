@@ -340,8 +340,8 @@ impl ModuleSwitchCoordinator {
 /// Extract process name from module ID.
 fn extract_process_name(module_id: &str) -> String {
     module_id
-        .replace("wireframe-", "")
         .replace("wireframe-ai-", "")
+        .replace("wireframe-", "")
         .replace("-", "_")
 }
 
@@ -411,7 +411,7 @@ mod tests {
             extract_process_name("wireframe-adapter-rust"),
             "adapter_rust"
         );
-        assert_eq!(extract_process_name("wireframe-ai-context"), "ai_context");
+        assert_eq!(extract_process_name("wireframe-ai-context"), "context");
         assert_eq!(extract_process_name("custom-module"), "custom_module");
     }
 }

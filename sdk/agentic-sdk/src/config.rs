@@ -401,8 +401,15 @@ modules:
         }
     }
 
+<<<<<<< HEAD
     #[test]
     fn test_plugin_config_from_file_valid_yaml() {
+=======
+    #[tokio::test]
+    async fn test_config_watcher_stop() {
+        use std::fs;
+        use tempfile::tempdir;
+>>>>>>> origin/jules-configwatcher-stop-test-4029460018877860288
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("config.yaml");
         let yaml = r#"
@@ -415,6 +422,7 @@ modules:
 "#;
         fs::write(&file_path, yaml).unwrap();
 
+<<<<<<< HEAD
         let config = PluginConfig::from_file(&file_path).unwrap();
         assert!(config.modules.contains_key("test"));
     }
@@ -547,6 +555,32 @@ modules:
         match result.err().unwrap() {
             ConfigError::UnsupportedFormat(ext) => assert_eq!(ext, "txt"),
             _ => panic!("Expected UnsupportedFormat"),
+        }
+
+        #[tokio::test]
+        async fn test_config_watcher_stop() {
+            let dir = tempdir().unwrap();
+            let file_path = dir.path().join("config.yaml");
+
+            // Create a dummy config file
+            std::fs::write(&file_path, "test: true").unwrap();
+
+            let mut watcher = ConfigWatcher::new(file_path).unwrap();
+
+            // Watcher is initially None until watch() is called
+            assert!(watcher.watcher.is_none());
+
+            // Start watching - we just pass a dummy callback
+            let _ = watcher.watch(|_| {}).await.unwrap();
+
+            // Watcher should be Some now
+            assert!(watcher.watcher.is_some());
+
+            // Stop watching
+            watcher.stop();
+
+            // Watcher should be None again
+            assert!(watcher.watcher.is_none());
         }
     }
 }
