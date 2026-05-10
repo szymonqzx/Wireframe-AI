@@ -1,5 +1,5 @@
-💡 **What:** This PR optimizes the `fan_out` function in `orchestrator_patterns.rs` by moving invariant struct fields (`correlation_id` and `context`) out of the loop.
+💡 **What:** Adds a `fan_out_bench` binary to `agentic-sdk` for measuring the performance of `fan_out` in `orchestrator_patterns.rs`, and adds the missing `tempfile` dev-dependency required by tests in `config.rs`.
 
-🎯 **Why:** Creating string clones inside a tight loop creates unnecessary allocations. While `sub_task` was already using `into_iter()` for ownership, hoisting invariant struct variables limits the cloning footprint within the `AgentJob` construction per loop iteration.
+🎯 **Why:** An initial attempt to optimize `fan_out` by hoisting `correlation_id` and `context` clones out of the loop was reverted: because `AgentJob.correlation_parent` is an owned `String` and `AgentJob.context` is an owned `HashMap`, the per-iteration clones cannot be avoided that way, and hoisting only added 2 extra allocations on top of the existing `2N`. The remaining changes are the benchmark binary (useful for future, evidence-backed optimization attempts) and a minor formatting tweak in `fan_out`.
 
-📊 **Measured Improvement:** The baseline execution time for 200,000 generated jobs was ~890ms. After hoisting the string clones out of the iteration logic, execution time was reduced to ~860ms, resulting in a measurable CPU and memory savings due to reduced runtime allocations. (Using custom bench script: `cargo run -p agentic-sdk --bin fan_out_bench --release`).
+📊 **Benchmark:** Run with `cargo run -p agentic-sdk --bin fan_out_bench --release`. Results from a single, un-warmed run with 200,000 sub-tasks were ~860–890ms; differences within that range are within measurement noise for this methodology.
