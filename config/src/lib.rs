@@ -258,8 +258,8 @@ impl WireframeConfig {
 mod tests {
     use super::*;
     use serial_test::serial;
-    use tempfile::NamedTempFile;
     use std::io::Write;
+    use tempfile::NamedTempFile;
 
     #[test]
     #[serial]

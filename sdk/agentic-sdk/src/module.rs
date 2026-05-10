@@ -243,8 +243,6 @@ pub async fn publish_envelopes_batch(
 pub struct MessageBuffer {
     buffer: Arc<Mutex<MessageBufferInner>>,
     max_size: usize,
-    #[allow(dead_code)]
-    max_age: Duration,
     nc: Arc<Client>,
     flush_task: Option<tokio::task::JoinHandle<()>>,
 }
@@ -268,7 +266,6 @@ impl MessageBuffer {
         Self {
             buffer,
             max_size,
-            max_age,
             nc,
             flush_task: Some(flush_task),
         }

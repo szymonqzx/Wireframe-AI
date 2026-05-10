@@ -138,7 +138,10 @@ impl Tool for HttpTool {
                         ToolError::InvalidParameters(format!("Invalid header name: {}", k))
                     })?;
                     let header_value = HeaderValue::from_str(v_str).map_err(|_| {
-                        ToolError::InvalidParameters(format!("Invalid header value for {}: {}", k, v_str))
+                        ToolError::InvalidParameters(format!(
+                            "Invalid header value for {}: {}",
+                            k, v_str
+                        ))
                     })?;
                     headers.insert(header_name, header_value);
                 }
@@ -150,9 +153,10 @@ impl Tool for HttpTool {
             request_builder = request_builder.body(body.to_string());
         }
 
-        let response = request_builder.send().await.map_err(|e| {
-            ToolError::ExecutionFailed(format!("HTTP request failed: {}", e))
-        })?;
+        let response = request_builder
+            .send()
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("HTTP request failed: {}", e)))?;
 
         let status = response.status().as_u16();
         let mut response_headers = serde_json::Map::new();

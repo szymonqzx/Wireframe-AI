@@ -38,4 +38,4 @@ name = "agentic_sdk"
 path = "src/lib.rs"
 
 [dev-dependencies]
-tempfile = { workspace = true }
+tempfile.workspace = true

@@ -5,6 +5,7 @@ use agentic_sdk::message_types::{
 use agentic_sdk::plugins::context::{
     EnrichmentStrategy, MemoryBackend, MemoryError, StorageBackend, StorageError,
 };
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;

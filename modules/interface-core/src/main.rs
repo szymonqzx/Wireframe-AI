@@ -133,17 +133,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(input_config) = config.interface.input_plugin.as_ref() {
         match input_config.plugin_id.as_str() {
             "input-cli" => {
-                let prompt = input_config.config
+                let prompt = input_config
+                    .config
                     .as_ref()
                     .and_then(|c| c.get("prompt"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("> ");
-                let input = Arc::new(wireframe_ai_input_cli::CliInput::with_prompt(prompt.to_string()));
+                let input = Arc::new(wireframe_ai_input_cli::CliInput::with_prompt(
+                    prompt.to_string(),
+                ));
                 core.set_input(input).await;
                 info!("Loaded input plugin: input-cli");
             }
             _ => {
-                warn!("Unknown input plugin: {}, using built-in CLI input", input_config.plugin_id);
+                warn!(
+                    "Unknown input plugin: {}, using built-in CLI input",
+                    input_config.plugin_id
+                );
             }
         }
     } else {
@@ -154,17 +160,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(output_config) = config.interface.output_plugin.as_ref() {
         match output_config.plugin_id.as_str() {
             "output-markdown" => {
-                let syntax_highlighting = output_config.config
+                let syntax_highlighting = output_config
+                    .config
                     .as_ref()
                     .and_then(|c| c.get("syntax_highlighting"))
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
-                let output = Arc::new(wireframe_ai_output_markdown::MarkdownOutput::with_syntax_highlighting(syntax_highlighting));
+                let output = Arc::new(
+                    wireframe_ai_output_markdown::MarkdownOutput::with_syntax_highlighting(
+                        syntax_highlighting,
+                    ),
+                );
                 core.set_output(output).await;
                 info!("Loaded output plugin: output-markdown");
             }
             _ => {
-                warn!("Unknown output plugin: {}, using built-in plain output", output_config.plugin_id);
+                warn!(
+                    "Unknown output plugin: {}, using built-in plain output",
+                    output_config.plugin_id
+                );
             }
         }
     } else {
