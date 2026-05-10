@@ -3,6 +3,12 @@ name = "agentic-sdk"
 version = "0.1.0"
 edition = "2021"
 description = "Wireframe AI SDK — envelope, message types, Module trait, NATS helpers"
+# Disable bin auto-discovery to prevent Cargo from picking up the orphan
+# stub at `src/bin/benchmark_serialize.rs` (which contains only comments
+# and no `fn main()`). The benchmark lives at
+# `examples/benchmark_serialize.rs` instead. Remove this once the stub
+# file is deleted via `git rm`.
+autobins = false
 
 [dependencies]
 serde = { workspace = true }
