@@ -195,7 +195,7 @@ impl PluginConfig {
                 chars.next(); // consume '{'
                 let mut var_name = String::new();
 
-                while let Some(c) = chars.next() {
+                for c in chars.by_ref() {
                     if c == '}' {
                         break;
                     }
@@ -399,5 +399,75 @@ modules:
             ConfigError::ParseError(_) => (),
             _ => panic!("Expected ParseError"),
         }
+    }
+
+    #[cfg(feature = "schema-validation")]
+    #[test]
+    fn test_validate_success() {
+        use serde_json::json;
+        let config = PluginConfig {
+            modules: HashMap::new(),
+        };
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "modules": {
+                    "type": "object"
+                }
+            },
+            "required": ["modules"]
+        });
+        assert!(config.validate(&schema).is_ok());
+    }
+
+    #[cfg(feature = "schema-validation")]
+    #[test]
+    fn test_validate_invalid_schema() {
+        use serde_json::json;
+        let config = PluginConfig {
+            modules: HashMap::new(),
+        };
+        // Invalid json schema, missing valid types
+        let schema = json!({
+            "type": "invalid_type"
+        });
+        let result = config.validate(&schema);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ConfigError::ValidationError(msg) => assert!(msg.contains("Schema compilation failed")),
+            _ => panic!("Expected ValidationError"),
+        }
+    }
+
+    #[cfg(feature = "schema-validation")]
+    #[test]
+    fn test_validate_validation_error() {
+        use serde_json::json;
+        let config = PluginConfig {
+            modules: HashMap::new(),
+        };
+        // Schema that requires "missing_field"
+        let schema = json!({
+            "type": "object",
+            "required": ["missing_field"]
+        });
+        let result = config.validate(&schema);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ConfigError::ValidationError(msg) => assert!(msg.contains("missing_field")),
+            _ => panic!("Expected ValidationError containing 'missing_field'"),
+        }
+    }
+
+    #[cfg(not(feature = "schema-validation"))]
+    #[test]
+    fn test_validate_no_op() {
+        use serde_json::json;
+        let config = PluginConfig {
+            modules: HashMap::new(),
+        };
+        // Even with an invalid schema, it should just return Ok(())
+        let schema = json!({ "type": "invalid_type" });
+        assert!(config.validate(&schema).is_ok());
     }
 }
