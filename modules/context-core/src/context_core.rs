@@ -442,6 +442,16 @@ impl ContextCore {
                     max_context_tokens: self.max_context_tokens,
                 };
 
+                // Record baseline sizes so that when each plugin returns a full
+                // ContextPackage (clone of input + its own additions), we only
+                // merge the *delta* and don't duplicate the original data once
+                // per plugin.
+                let base_memory_len = ctx.memory_chunks.len();
+                let base_session_len = ctx.session_history.len();
+                let base_readonly_len = ctx.readonly_files.len();
+                let base_env_keys: std::collections::HashSet<String> =
+                    ctx.safe_env.keys().cloned().collect();
+
                 // Use cloned pipeline to avoid holding read lock during enrichment
                 let mut futures = Vec::new();
                 for plugin in pipeline.iter() {
@@ -452,11 +462,24 @@ impl ContextCore {
 
                 let results = futures::future::join_all(futures).await;
 
-                for enriched_ctx in results.into_iter().flatten() {
-                    ctx.memory_chunks.extend(enriched_ctx.memory_chunks);
-                    ctx.session_history.extend(enriched_ctx.session_history);
-                    ctx.readonly_files.extend(enriched_ctx.readonly_files);
-                    ctx.safe_env.extend(enriched_ctx.safe_env);
+                for mut enriched_ctx in results.into_iter().flatten() {
+                    if enriched_ctx.memory_chunks.len() > base_memory_len {
+                        ctx.memory_chunks
+                            .extend(enriched_ctx.memory_chunks.drain(base_memory_len..));
+                    }
+                    if enriched_ctx.session_history.len() > base_session_len {
+                        ctx.session_history
+                            .extend(enriched_ctx.session_history.drain(base_session_len..));
+                    }
+                    if enriched_ctx.readonly_files.len() > base_readonly_len {
+                        ctx.readonly_files
+                            .extend(enriched_ctx.readonly_files.drain(base_readonly_len..));
+                    }
+                    for (k, v) in enriched_ctx.safe_env {
+                        if !base_env_keys.contains(&k) {
+                            ctx.safe_env.insert(k, v);
+                        }
+                    }
                 }
 
                 cache.put(enrichment_key, ctx.clone());
