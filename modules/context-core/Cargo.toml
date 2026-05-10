@@ -5,6 +5,7 @@ edition = "2021"
 description = "Context core orchestration — NATS communication and plugin management"
 
 [dependencies]
+async-trait = { workspace = true }
 agentic-sdk = { workspace = true, features = ["schema-validation", "macros"] }
 wireframe-config = { path = "../../config" }
 tokio = { workspace = true, features = ["sync", "macros", "rt-multi-thread", "signal"] }
