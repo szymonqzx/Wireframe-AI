@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 description = "Wireframe AI SDK — envelope, message types, Module trait, NATS helpers"
 
+[[bin]]
+name = "fan_out_bench"
+path = "benches/bin/fan_out_bench.rs"
+
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -32,3 +36,6 @@ schema-validation = ["jsonschema"]
 [lib]
 name = "agentic_sdk"
 path = "src/lib.rs"
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -12,6 +12,9 @@ use std::collections::HashMap;
 pub fn fan_out(enriched: &TaskEnriched, sub_tasks: Vec<String>) -> Vec<Envelope<AgentJob>> {
     let mut jobs = Vec::with_capacity(sub_tasks.len());
     let session_id = Some(enriched.session_id.clone());
+    let correlation_id = enriched.correlation_id.clone();
+    let context = enriched.context.clone();
+
     let metadata = crate::message_types::JobMetadata {
         submitter: "orchestrator".to_string(),
         priority: 5,
@@ -20,8 +23,8 @@ pub fn fan_out(enriched: &TaskEnriched, sub_tasks: Vec<String>) -> Vec<Envelope<
 
     for (idx, sub_task) in sub_tasks.into_iter().enumerate() {
         let job = AgentJob {
-            job_id: format!("{}-{}", enriched.correlation_id, idx),
-            correlation_parent: enriched.correlation_id.clone(),
+            job_id: format!("{}-{}", correlation_id, idx),
+            correlation_parent: correlation_id.clone(),
             task: crate::message_types::TaskDescription {
                 user_input: sub_task.clone(),
                 sub_task: Some(crate::message_types::SubTask {
@@ -32,7 +35,7 @@ pub fn fan_out(enriched: &TaskEnriched, sub_tasks: Vec<String>) -> Vec<Envelope<
                 output_format: None,
                 user_constraints: vec![],
             },
-            context: enriched.context.clone(),
+            context: context.clone(),
             available_tool_capabilities: vec![],
             constraints: Default::default(),
             model_config: Default::default(),
@@ -40,11 +43,7 @@ pub fn fan_out(enriched: &TaskEnriched, sub_tasks: Vec<String>) -> Vec<Envelope<
             adapter_hints: None,
             schema_version: 1,
         };
-        jobs.push(Envelope::new(
-            "agent.job",
-            job,
-            session_id.clone(),
-        ));
+        jobs.push(Envelope::new("agent.job", job, session_id.clone()));
     }
     jobs
 }
