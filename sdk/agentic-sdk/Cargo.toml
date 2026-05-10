@@ -3,7 +3,6 @@ name = "agentic-sdk"
 version = "0.1.0"
 edition = "2021"
 description = "Wireframe AI SDK — envelope, message types, Module trait, NATS helpers"
-autobins = false
 
 [dependencies]
 serde = { workspace = true }
