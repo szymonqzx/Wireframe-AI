@@ -341,6 +341,25 @@ modules:
     }
 
     #[tokio::test]
+    async fn test_config_watcher_new_valid_yml() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config.yml");
+        let yaml = r#"
+modules:
+  test:
+    enabled: true
+    plugins:
+      enrichment_pipeline: []
+      tools: []
+"#;
+        fs::write(&file_path, yaml).unwrap();
+
+        let watcher = ConfigWatcher::new(file_path).unwrap();
+        let config = watcher.get_config().await;
+        assert!(config.modules.contains_key("test"));
+    }
+
+    #[tokio::test]
     async fn test_config_watcher_new_valid_json() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("config.json");
@@ -370,6 +389,38 @@ modules:
         match result.err().unwrap() {
             ConfigError::IoError(e) => assert!(e.contains("No such file or directory")),
             _ => panic!("Expected IoError"),
+        }
+    }
+
+    #[test]
+    fn test_config_watcher_new_no_extension() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config");
+        fs::write(&file_path, "some content").unwrap();
+
+        let result = ConfigWatcher::new(file_path);
+        assert!(result.is_err());
+        match result.err().unwrap() {
+            ConfigError::IoError(e) => assert!(e.contains("No file extension")),
+            _ => panic!("Expected IoError No file extension"),
+        }
+    }
+
+    #[test]
+    fn test_config_watcher_new_directory() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config.json");
+        fs::create_dir(&file_path).unwrap();
+
+        let result = ConfigWatcher::new(file_path);
+        assert!(result.is_err());
+        match result.err().unwrap() {
+            ConfigError::IoError(e) => assert!(
+                e.to_lowercase().contains("is a directory")
+                    || e.to_lowercase().contains("access is denied")
+                    || e.to_lowercase().contains("permission denied")
+            ),
+            _ => panic!("Expected IoError from directory"),
         }
     }
 
