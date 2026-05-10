@@ -451,6 +451,12 @@ impl ContextCore {
                 let base_readonly_len = ctx.readonly_files.len();
                 let base_env_keys: std::collections::HashSet<String> =
                     ctx.safe_env.keys().cloned().collect();
+                // Baseline scalar fields so we can detect plugin overrides.
+                // `join_all` preserves input order, so iterating results in
+                // order yields deterministic last-write-wins semantics that
+                // match the previous sequential pipeline.
+                let base_working_dir = ctx.working_dir.clone();
+                let base_max_context_tokens = ctx.max_context_tokens;
 
                 // Use cloned pipeline to avoid holding read lock during enrichment
                 let mut futures = Vec::new();
@@ -479,6 +485,13 @@ impl ContextCore {
                         if !base_env_keys.contains(&k) {
                             ctx.safe_env.insert(k, v);
                         }
+                    }
+                    // Propagate scalar field overrides (last writer wins).
+                    if enriched_ctx.working_dir != base_working_dir {
+                        ctx.working_dir = enriched_ctx.working_dir;
+                    }
+                    if enriched_ctx.max_context_tokens != base_max_context_tokens {
+                        ctx.max_context_tokens = enriched_ctx.max_context_tokens;
                     }
                 }
 
