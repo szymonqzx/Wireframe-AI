@@ -91,18 +91,17 @@ async fn main() -> Result<()> {
                 break 'mainloop;
             }
 
-            // Debounce: skip rapid duplicate events within 50ms
-            {
-                let mut last_time = last_event_time.lock().await;
-                if let Some(ref lt) = *last_time {
-                    if lt.elapsed() < std::time::Duration::from_millis(50) {
-                        continue;
-                    }
-                }
-                *last_time = Some(Instant::now());
-            }
-
             if let InputEvent::Plugin(ref pe) = event {
+                // Debounce only Input events to skip rapid duplicate key repeats
+                if matches!(pe, PluginEvent::Input(_)) {
+                    let mut last_time = last_event_time.lock().await;
+                    if let Some(ref lt) = *last_time {
+                        if lt.elapsed() < std::time::Duration::from_millis(50) {
+                            continue;
+                        }
+                    }
+                    *last_time = Some(Instant::now());
+                }
                 // First pass to plugins
                 let mut consumed = false;
                 {
