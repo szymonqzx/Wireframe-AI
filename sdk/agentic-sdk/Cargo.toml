@@ -3,6 +3,7 @@ name = "agentic-sdk"
 version = "0.1.0"
 edition = "2021"
 description = "Wireframe AI SDK — envelope, message types, Module trait, NATS helpers"
+autobins = false
 
 [dependencies]
 serde = { workspace = true }
@@ -33,9 +34,6 @@ schema-validation = ["jsonschema"]
 name = "agentic_sdk"
 path = "src/lib.rs"
 
-[[bin]]
+[[example]]
 name = "benchmark_serialize"
-path = "src/bin/benchmark_serialize.rs"
-
-[dev-dependencies]
-tempfile = "3.10"
+path = "examples/benchmark_serialize.rs"

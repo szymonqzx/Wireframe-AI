@@ -482,8 +482,30 @@ impl BatchSerializer {
     }
 
     /// Serialize multiple values with keys (for caching).
+    ///
+    /// Accepts a borrowed slice; keys are cloned. Prefer
+    /// [`Self::serialize_batch_with_owned_keys`] when you can transfer
+    /// ownership of the keys to avoid cloning.
     #[inline]
-    pub fn serialize_batch_with_keys<I, T>(
+    pub fn serialize_batch_with_keys<T: Serialize>(
+        &mut self,
+        items: &[(String, T)],
+    ) -> Result<Vec<(String, Vec<u8>)>, serde_json::Error> {
+        let mut results = Vec::with_capacity(items.len());
+        for (key, value) in items {
+            let bytes = self.serializer.serialize_to_vec(value)?;
+            results.push((key.clone(), bytes));
+        }
+        Ok(results)
+    }
+
+    /// Serialize multiple values with owned keys, avoiding clones.
+    ///
+    /// Optimized variant of [`Self::serialize_batch_with_keys`] that takes
+    /// ownership of the keys. Accepts any `IntoIterator` yielding owned
+    /// `(String, T)` pairs, e.g. `Vec<(String, T)>`.
+    #[inline]
+    pub fn serialize_batch_with_owned_keys<I, T>(
         &mut self,
         items: I,
     ) -> Result<Vec<(String, Vec<u8>)>, serde_json::Error>
