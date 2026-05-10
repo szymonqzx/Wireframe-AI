@@ -400,4 +400,18 @@ modules:
             _ => panic!("Expected ParseError"),
         }
     }
+
+    #[test]
+    fn test_config_watcher_new_no_extension() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("config_file_without_extension");
+        fs::write(&file_path, "modules: {}").unwrap();
+
+        let result = ConfigWatcher::new(file_path);
+        assert!(result.is_err());
+        match result.err().unwrap() {
+            ConfigError::IoError(e) => assert!(e.contains("No file extension")),
+            _ => panic!("Expected IoError for no file extension"),
+        }
+    }
 }

@@ -32,3 +32,6 @@ schema-validation = ["jsonschema"]
 [lib]
 name = "agentic_sdk"
 path = "src/lib.rs"
+
+[dev-dependencies]
+tempfile = { workspace = true }
